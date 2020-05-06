@@ -7,7 +7,7 @@ TRAIN_MASKS = f"{TRAIN_DIR}masks_np/"
 TRAIN_META = f"{TRAIN_DIR}SummaryData/SN6_Train_AOI_11_Rotterdam_Buildings.csv"
 TRAIN_FOLDS = f"{TRAIN_DIR}folds.csv"
 
-TEST_DIR = "../../data/test_public/AOI_11_Rotterdam/"
+TEST_DIR = "../data/test_public/AOI_11_Rotterdam/"
 TEST_SAR = f"{TEST_DIR}SAR-Intensity/"
 RESULTS_DIR = "../output/"
 LOSS = "cross_entropy"

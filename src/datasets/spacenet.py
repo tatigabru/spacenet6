@@ -22,13 +22,13 @@ class SARDataset(Dataset):
     SpaceNet 6 SAR Dataset
 
     Args:         
-        sars_dir: directory with SARs inputs
-        masks_dir: directory with binary masks
-        labels_df: true labels (as polygons)   
-        img_size: the desired image size to resize to for prograssive learning
+        sars_dir  : directory with SARs inputs
+        masks_dir : directory with binary masks
+        labels_df : true labels (as polygons)   
+        img_size  : the desired image size to resize to for prograssive learning
         transforms: the name of transforms setfrom the transfroms dictionary  
-        debug: if True, runs debugging on a few images. Default: 'False'   
-        normalise: if True, normalise images. Default: 'True'
+        debug     : if True, runs debugging on a few images. Default: 'False'   
+        normalise : if True, normalise images. Default: 'True'
 
     """
     def __init__(self, 
@@ -50,9 +50,9 @@ class SARDataset(Dataset):
         self.normalise = normalise        
         self.img_size = img_size
         self.transforms = transforms
-        self.ids = labels_df.ImageId.values    
-        #sar_ids = os.listdir(sars_dir)
-        #self.ids = [s[41:-4] for s in sar_ids]
+        #self.ids = labels_df.ImageId.values    
+        sar_ids = os.listdir(sars_dir)
+        self.ids = [s[41:-4] for s in sar_ids]
         # select a subset for the debugging
         if self.debug:
             self.ids = self.ids[:160]
@@ -69,7 +69,7 @@ class SARDataset(Dataset):
         try:
             image = cv2.imread(image_path, cv2.IMREAD_UNCHANGED)               
             mask = np.load(mask_path)
-            # pre-process, resize if needed
+            # resize if needed
             image = cv2.resize(image, (self.img_size, self.img_size))            
             mask = cv2.resize(mask, (self.img_size, self.img_size), interpolation=cv2.INTER_NEAREST)
         except:
@@ -77,8 +77,7 @@ class SARDataset(Dataset):
             print("Unexpected error:", sys.exc_info()[0])
             image = np.ones_like((self.img_size, self.img_size, 4), np.uint8)
             mask = np.zeros((self.img_size, self.img_size), np.uint8)
-            pass 
-          
+            
         # preprocess to 0..1
         if self.preprocess:   
             image = prep(image) 
@@ -86,9 +85,7 @@ class SARDataset(Dataset):
         if self.transforms is not None: 
             augmented = self.transforms(image=image, mask=mask)  
             image = augmented['image']
-            mask = augmented['mask']           
-        #print(f'image.shape: {image.shape}') 
-
+            mask = augmented['mask']         
         # normalise 
         if self.normalise:
             image = normalize(image, max_value=1)    
@@ -96,12 +93,80 @@ class SARDataset(Dataset):
         image = image.transpose(2,0,1).astype(np.float32) # channels first
         target = mask.astype(np.uint8)  
         target = np.expand_dims(target, axis=0) # single channel first
-        #print(f'target.shape: {target.shape}')
-           
+        #print(f'target.shape: {target.shape}')           
         image = torch.from_numpy(image) 
         target = torch.from_numpy(target)
         
         return image, target, sample_id
+
+
+class TestSARDataset(Dataset):
+    """
+    SpaceNet 6 SAR Dataset
+
+    Args:         
+        sars_dir  : directory with SARs inputs        
+        labels_df : true labels (as polygons)   
+        img_size  : the desired image size to resize to for prograssive learning
+        transforms: the name of transforms setfrom the transfroms dictionary  
+        debug     : if True, runs debugging on a few images. Default: 'False'   
+        normalise : if True, normalise images. Default: 'True'
+
+    """
+    def __init__(self, 
+                sars_dir: str,          
+                labels_df: pd.DataFrame,           
+                img_size: int = 512,                 
+                transforms: str ='valid', 
+                preprocess: bool = True,
+                normalise: bool = True,                         
+                debug: bool = False,            
+                ):
+
+        super(TestSARDataset, self).__init__()  # inherit it from torch Dataset
+        self.sars_dir = sars_dir          
+        self.debug = debug
+        self.preprocess = preprocess
+        self.normalise = normalise        
+        self.img_size = img_size
+        self.transforms = transforms
+        #self.ids = labels_df.ImageId.values    
+        sar_ids = os.listdir(sars_dir)
+        self.ids = [s[41:-4] for s in sar_ids]
+        # select a subset for the debugging
+        if self.debug:
+            self.ids = self.ids[:160]
+            print('Debug mode, samples: ', self.ids[:10])  
+
+    def __len__(self):
+        return len(self.ids)        
+       
+    def __getitem__(self, idx):
+        sample_id = self.ids[idx]
+        image_path = os.path.join(self.sars_dir, "SN6_Train_AOI_11_Rotterdam_SAR-Intensity_{}.tif".format(sample_id))              
+        try:
+            image = cv2.imread(image_path, cv2.IMREAD_UNCHANGED)         
+            image = cv2.resize(image, (self.img_size, self.img_size))            
+        except:
+            print(f'Missing Id: {sample_id}')
+            print("Unexpected error:", sys.exc_info()[0])
+            image = np.ones_like((self.img_size, self.img_size, 4), np.uint8)                
+          
+        # preprocess to 0..1
+        if self.preprocess:   
+            image = prep(image) 
+        # augment
+        if self.transforms is not None: 
+            augmented = self.transforms(image=image)  
+            image = augmented['image']                  
+        # normalise 
+        if self.normalise:
+            image = normalize(image, max_value=1)   
+        # post-processing
+        image = image.transpose(2,0,1).astype(np.float32) # channels first                   
+        image = torch.from_numpy(image) 
+        
+        return image, sample_id
 
 
 def normalize(img: np.array, mean: list=[0.485, 0.456, 0.406, 0.406], std: list=[0.229, 0.224, 0.225, 0.225], max_value: float=92.88) -> np.array:
@@ -161,7 +226,7 @@ def preprocess(img: np.array, mean: list=[0.485, 0.456, 0.406, 0.406], std: list
     return img
 
 
-def test_dataset():
+def test_dataset() -> None:
     """Helper to vizualise a sample from the data set"""
     df = pd.read_csv(f'{TRAIN_DIR}folds.csv')
     train_dataset = SARDataset(
@@ -171,23 +236,72 @@ def test_dataset():
                 img_size  = 512,                
                 transforms= None,
                 preprocess= True,
-                normalise = True,              
+                normalise = False,              
                 debug     = True,   
     ) 
     image, target, sample_id = train_dataset[5]
-    plot_img_target(image, target, sample_id, fig_num = 1)                
+    #plot_img_target(image, target, sample_id, fig_num = 1)   
+    plot_sar(image, sample_id, fig_num = 2)     
+    plot_sar_target(image, target, sample_id, fig_num = 3)        
 
 
-def pauli_transform(sar_intensity: np.array):
-    """Transform SAR to RGB
-    Source: 
-    """
+def test_TestSARDataset() -> None:
+    """Helper to vizualise a sample from the data set"""
+    df = pd.read_csv(f'{TRAIN_DIR}folds.csv')
+    test_dataset = TestSARDataset(
+                sars_dir = TRAIN_SAR,                 
+                labels_df = df, 
+                img_size  = 512,                
+                transforms= None,
+                preprocess= True,
+                normalise = False,              
+                debug     = True,   
+    ) 
+    image, sample_id = test_dataset[15]       
+    plot_sar(image, sample_id, fig_num = 2) 
+
+
+def plot_sar(image: torch.Tensor, sample_token: str = None, fig_num: int = 1) -> None:
+    """Helper to plot image and target together"""
+    image = image.numpy()
+    #print(image.shape)    
+    # transpose the input volume CXY to XYC order
+    image = image.transpose(1,2,0)               
+    image = np.rint(image*255).astype(np.uint8)
+    channels = []
+    for ch in range(4):
+        channels.append(cv2.cvtColor(image[..., ch], cv2.COLOR_GRAY2RGB))
     
-    sar_rgb = []
-    return sar_rgb
+    plt.figure(fig_num, figsize=(18,6))        
+    plt.imshow(np.hstack((channels[0], channels[1], channels[2], channels[3]))) 
+    plt.title(sample_token)
+    plt.show()
 
 
-def plot_img_target(image: torch.Tensor, target: torch.Tensor, sample_token = None, fig_num = 1):
+def plot_sar_target(image: torch.Tensor, target: torch.Tensor, sample_token: str = None, fig_num: int = 1) -> None:
+    """Helper to plot image and target together"""
+    image = image.numpy()
+    #print(image.shape)    
+    # transpose the input volume CXY to XYC order
+    image = image.transpose(1,2,0)               
+    image = np.rint(image*255).astype(np.uint8)
+    channels = []
+    for ch in range(4):
+        channels.append(cv2.cvtColor(image[..., ch], cv2.COLOR_GRAY2RGB))
+        
+    target = target.numpy()
+    if target.ndim == 3:
+        target = np.squeeze(target, axis=0)
+    target =np.rint(target*255).astype(np.uint8)               
+    target_as_rgb = np.repeat(target[...,None], 3, 2) # repeat array for three channels
+
+    plt.figure(fig_num+1, figsize=(20,5))        
+    plt.imshow(np.hstack((channels[0], channels[1], channels[2], channels[3], target_as_rgb))) 
+    plt.title(sample_token)
+    plt.show()
+
+
+def plot_img_target(image: torch.Tensor, target: torch.Tensor, sample_token: str = None, fig_num: int = 1) -> None:
     """Helper to plot image and target together"""
     image = image.numpy()
     #print(image.shape)    
@@ -203,17 +317,16 @@ def plot_img_target(image: torch.Tensor, target: torch.Tensor, sample_token = No
     target = target.numpy()
     if target.ndim == 3:
         target = np.squeeze(target, axis=0)
-
     target =np.rint(target*255).astype(np.uint8)               
     target_as_rgb = np.repeat(target[...,None], 3, 2) # repeat array for three channels
 
     plt.figure(fig_num, figsize=(18,6))        
     plt.imshow(np.hstack((image, gray_as_rgb, target_as_rgb))) 
     plt.title(sample_token)
-    plt.show()
+    plt.show()    
+    
 
-
-def test_dataset_augs(img_size: int=224, transforms = TRANSFORMS["d4"]):
+def test_dataset_augs(img_size: int=224, transforms: dict = TRANSFORMS["d4"]) -> None:
     """Helper to test data augmentations"""
     df = pd.read_csv(f'{TRAIN_DIR}folds.csv')
     train_dataset = SARDataset(
@@ -230,9 +343,11 @@ def test_dataset_augs(img_size: int=224, transforms = TRANSFORMS["d4"]):
         # get dataset sample and plot it
         im, target, sample_id = train_dataset[5]
         plot_img_target(im, target, sample_id, fig_num = count+1)
+        plot_sar(im, sample_id, fig_num = count+6)
 
 
 if __name__ == "__main__":
 
     test_dataset()
+    test_TestSARDataset()
     test_dataset_augs(img_size=512, transforms = TRANSFORMS["d4"])
