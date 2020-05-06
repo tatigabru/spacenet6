@@ -1,0 +1,61 @@
+CUDNN:
+  BENCHMARK: true
+  DETERMINISTIC: false
+  ENABLED: true
+GPUS: (0,1)
+
+LOGGING:
+    RESULTS_DIR: "../output/"
+    EXPERIMENT: " "
+    LOG_DIR: '../log'
+    PRINT_FREQ: 100
+
+DATASET: 'spacenet'
+    TRAIN_DIR: "../data/train/AOI_11_Rotterdam/"
+    TRAIN_SAR: f"{TRAIN_DIR}SAR-Intensity/"
+    TRAIN_RGB: f"{TRAIN_DIR}PS-RGB/"
+    TRAIN_JSON: f"{TRAIN_DIR}geojson_buildings/"
+    TRAIN_MASKS: f"{TRAIN_DIR}masks_np/"
+    TRAIN_META: f"{TRAIN_DIR}SummaryData/SN6_Train_AOI_11_Rotterdam_Buildings.csv"
+    TRAIN_FOLDS: f"{TRAIN_DIR}folds.csv"  
+    TEST_DIR : "../../data/test_public/AOI_11_Rotterdam/"
+    TEST_SAR: f"{TEST_DIR}SAR-Intensity/"
+    NUM_CLASSES: 2
+
+MODEL:  
+  MODEL_NAME: "unet_se_resnext101_32x4d"
+  ENCODER: "se_resnext101_32x4d"
+  PRETRAINED: true
+  CHECKPOINT: 'pretrained_models/hrnetv2_w48_imagenet_pretrained.pth'
+  NUM_CHANNELS: 4
+
+LOSS: "BCEJaccard"
+    bce_weight: 0.5 
+    jaccard_weight: 0.5 
+    log_loss: False 
+    log_sigmoid: True
+
+TRAIN:
+  DEBUG: true  
+  FOLD: 0
+  IMAGE_SIZE: 224
+  BATCH_SIZE: 8  
+  NUM_WORKERS: 4
+  FROM_EPOCH: 0
+  EPOCHS: 500
+  RESUME: true
+  OPTIMIZER: 'Radam'
+  LR: 0.001
+  SAVE_OOF: True
+
+TRANSFORMS: "medium"
+  FLIP: true
+  HFLIP: true
+  D4: true
+  MULTI_SCALE: true
+  
+TEST:
+  IMAGE_SIZE: 224
+  BATCH_SIZE: 8  
+  NUM_WORKERS: 4
+  TEST_TRANSFORMS: "d4"  
