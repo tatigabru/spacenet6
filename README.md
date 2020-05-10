@@ -1,37 +1,71 @@
-# SpeceNet6 Cahllenge
+# SpaceNet6 Challenge
 
 
-## 
+## Models
+Unet models with different encoders from [segmentation models libruary](https://github.com/qubvel/segmentation_models.pytorch). All base models used were pre-trained on Imagenet dataset. 
 
-## ModelsUnet models with different encoders, https://github.com/qubvel/segmentation_models.pytorch, from [segmentation models libruary](https://github.com/qubvel/segmentation_models.pytorch) 
+
+## Dataset
+The data were provided by th challenge orginisers. The script to download the dataset is in ```scripts/download_spacenet6_data```. The corresponding masks were uploaded on kaggle, the donload scrips is in 
+```scripts/download_masks```.
 
 
 ## Images preprocessing and augmentations
 The original images were scaled to 512 x 512 px resolution. 
-Progressive learning ...
+First, the models were pre-trained on RGB data. For the RGB images I added the grayscale to have 4 input channes for the pre-train, similar to SAR data.
+The RGB dataset is in ```src/datasets/spacenet_rgb.py```. The data were normalised as in ImageNet. 
 
-The images were agmented using [albumentations libruary](https://albumentations.readthedocs.io/en/latest/index.html). The datasets with transforms are in ```src/datasets/```
+![eda](pics/dataset_rgba.png)
+Fig. 1 An example of RGB and grayscale data and the corresponding binary mask.
 
-## Training
-All base models used were pre-trained on Imagenet dataset. 
-Training script is in ```src/train_runner.py```
+The images were agmented using [albumentations libruary](https://albumentations.readthedocs.io/en/latest/index.html). The dictionary of possible transforms is in ```src/datasets/transforms.py```
+
+![eda](pics/d4_augs.png)
+Fig. 2 An examples of augmented RGB and grayscale data with the corresponding binary mask.
+
+After the pre-train models were trained on 4-channel SAR data. The raw data were normalised using 98% percintile and then as in ImageNet. 
+The SAR dataset is in ```src/datasets/spacenet.py```
+
+![eda](pics/sarmask.png)
+Fig. 3 An examples of 4 channels SAR data with the corresponding binary mask.
+
+The transforms "medium" and "d4" were used for training, ""flip_bright"" for validation, see transforms in ```src/datasets/transforms.py```
+
+![eda](pics/sar_aug2.png)
+Fig. 4 An examples of 4 channels SAR data with the corresponding binary mask.
+
 
 ## Prepare environment 
 1. Install anaconda
 2. Run ```scripts/create_env.sh``` bash file to set up the conda environment
 
-## Running the experiments 
-Set up your own path ways to data and results_dir in configs.py.
 
-Basic model: FPN ResNet101
-Set paths in configs
-Set IMS_SIZE in configs for transforms, use the same as in the args
+## Training
+Training script is in ```src/pretrain_runner.py``` for RGB data and in ```src/train_runner.py``` for SAR data, respectively.
 
-For debugging, train running command is:
-python -m src.train_runner --model-name "unet_resnet101" --encoder "resnet101" --debug True --image-size 224 --epochs 2 --lr 1e-2 --batch-size 4 --num-workers 2 --save-oof False
+Set up your own path ways in ```src/configs.py```.
+Basic model: Unet Se-ResNext101
+Set IMS_SIZE in configs for transforms.
 
-For training:
-python -m src.train_runner --model-name "fpn_resnet101" --encoder "resnet101" --debug False --image-size 512 --epochs 50 --lr 1e-2 --batch-size 8 --num-workers 4 --save-oof False
+# Make folds
+python -m src.folds.make_folds
 
+# Create empty masks for images with no objects
+python -m src.utils.make_empty_masks
 
+# Test the train runners run
+python -m src.pretrain_runner --model-name "unet_se_resnext101_32x4d" --encoder "se_resnext101_32x4d" --debug True --image-size 224 --epochs 2 --lr 1e-2 --batch-size 8 --num-workers 2
 
+python -m src.train_runner --model-name "unet_se_resnext101_32x4d" --encoder "se_resnext101_32x4d" --debug True --image-size 224 --epochs 2 --lr 1e-2 --batch-size 8 --num-workers 2 
+
+# Pretrain the model on RGB + grayscale images
+python -m src.pretrain_runner --model-name "unet_se_resnext101_32x4d" --encoder "se_resnext101_32x4d" --image-size 512 --epochs 200 --lr 1e-3 --batch-size 8 --num-workers 4 --save-oof true
+
+# Continuer training the model on SAR data
+python -m src.train_runner --model-name "unet_se_resnext101_32x4d" --encoder "se_resnext101_32x4d" --image-size 512 --checkpoint = '<pretrained_rgb_model>' --epochs 200 --lr 1e-3 --batch-size 8 --num-workers 4 --save-oof True
+
+# Run inference on the validation set
+python -m src.predict --action 
+
+# Run inference on the test set
+python -m src.predict --action
