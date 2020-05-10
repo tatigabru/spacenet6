@@ -106,6 +106,9 @@ train_medium = A.Compose([
         ])
 
 
+valid_flip = [A.HorizontalFlip()]
+
+
 valid_ade = A.Compose([
             A.SmallestMaxSize(IMG_SIZE, p=1.),
             A.Lambda(name="Pad32", image=pad_x32, mask=pad_x32),   
@@ -119,8 +122,7 @@ crop_transform = A.Compose([A.RandomSizedCrop((int(0.5*IMG_SIZE), IMG_SIZE), IMG
             ])
 
 
-safe_augmentations = A.Compose([A.HorizontalFlip(), A.RandomBrightnessContrast(), A.Normalize()])
-
+safe_augmentations = A.Compose([A.HorizontalFlip(), A.RandomBrightnessContrast()])
 
 light_augmentations = A.Compose([
                 A.HorizontalFlip(),
@@ -185,6 +187,7 @@ TRANSFORMS = {
     "d4_geometric": d4_geometric,
     "light": train_light,
     "medium": train_medium,
+    "hflip": valid_flip,
     "ade_valid": valid_ade,     
     "tensor_norm": tensor_transform,
     "flip_bright": safe_augmentations,
