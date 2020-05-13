@@ -35,7 +35,7 @@ from .utils.utils import load_model, load_model_optim, set_seed, write_event
 def train_runner(model: nn.Module, model_name: str, results_dir: str, experiment: str = '', debug: bool = False, img_size: int = IMG_SIZE,
                  learning_rate: float = 1e-2, fold: int = 0, 
                  epochs: int = 15, batch_size: int = 8, num_workers: int = 4, from_epoch: int = 0,
-                 save_oof: bool = False, save_train_preds: bool = False):
+                 save_oof: bool = False, save_train_oof: bool = False):
     """
     Model training runner
 
@@ -116,15 +116,15 @@ def train_runner(model: nn.Module, model_name: str, results_dir: str, experiment
     # scheduler = lr_scheduler.ReduceLROnPlateau(optimizer, patience=2, verbose=True, factor=0.2)
 
     # criteria
-    #criterion = nn.BCEWithLogitsLoss()                 
-    #criterion = BCEJaccardLoss(bce_weight=0.5, jaccard_weight=0.5, log_loss=False, log_sigmoid=True)
+    criterion1 = nn.BCEWithLogitsLoss()                 
+    criterion = BCEJaccardLoss(bce_weight=1, jaccard_weight=0.01, log_loss=False, log_sigmoid=True)
     #criterion = JaccardLoss(log_sigmoid=True, log_loss=False)
-    criterion = L.BinaryFocalLoss(alpha=0.25, gamma=2)
+    #criterion = L.BinaryFocalLoss(alpha=0.25, gamma=2)
         
     # logging
     #if make_log:
     report_batch = 20  
-    report_epoch = 2  
+    report_epoch = 20  
     log_file = os.path.join(checkpoints_dir, f'{experiment}fold_{fold}.log')
     logging.basicConfig(filename=log_file, filemode="w", level=logging.DEBUG)  
     logging.info(f'Parameters:\n model_name: {model_name}\n, results_dir: {results_dir}\n, experiment: {experiment}\n, img_size: {img_size}\n, \
@@ -149,7 +149,7 @@ def train_runner(model: nn.Module, model_name: str, results_dir: str, experiment
                 loss = criterion(prediction, target)
                 optimizer.zero_grad()            
                 loss.backward()
-                torch.nn.utils.clip_grad_norm_(model.parameters(), 0.5)
+                torch.nn.utils.clip_grad_norm_(model.parameters(), 2)
                 optimizer.step()
                 epoch_losses.append(loss.detach().cpu().numpy())
 
@@ -164,7 +164,7 @@ def train_runner(model: nn.Module, model_name: str, results_dir: str, experiment
         logging.info(f'epoch: {epoch}; step: {batch_num}; loss: {np.mean(epoch_losses)} \n')
 
         # validate model
-        val_loss = validate_loss(model, dataloader_valid, criterion, epoch,
+        val_loss = validate_loss(model, dataloader_valid, criterion1, epoch,
                                  validations_dir)
 
         valid_metrics = validate(model, dataloader_valid, criterion, epoch,
@@ -277,7 +277,7 @@ def validate(model: nn.Module, dataloader_valid: DataLoader, criterion: L,
         for batch_num, (img, target, tile_ids) in enumerate(progress_bar):  # iterate over batches
             img = img.to(device)
             target = target.float().to(device)
-            output = model(img)                      
+            output = model(img) 
             loss = criterion(output, target)
             val_losses.append(loss.detach().cpu().numpy())         
               
@@ -293,10 +293,10 @@ def validate(model: nn.Module, dataloader_valid: DataLoader, criterion: L,
                         pred = np.squeeze(pred, axis=0)
                     prob_mask = np.rint(pred*255).astype(np.uint8)                   
                     prob_mask_rgb = np.repeat(prob_mask[...,None], 3, 2) # repeat array for three channels    
-                    cv2.imwrite(f"{predictions_dir}/{tile_name}.png", prob_mask_rgb)                      
-    
-    print("Epoch {}, Valid Loss: {}, mIoU: {}".format(epoch, np.mean(val_losses), np.mean(ious)))
+                    cv2.imwrite(f"{predictions_dir}/{tile_name}.png", prob_mask_rgb)   
+
     # loss and metrics averaged over all batches
+    print("Epoch {}, Valid Loss: {}, mIoU: {}".format(epoch, np.mean(val_losses), np.mean(ious)))    
     metrics = {'val_loss': np.mean(val_losses), 'miou': np.mean(ious)}
     
     return metrics
@@ -306,6 +306,7 @@ def main():
     parser = argparse.ArgumentParser()
     arg = parser.add_argument
     arg('--model-name', type=str, default='unet_resnet50', help='String model name used for saving')
+    arg('--experiment', type=str, default='', help='String name for the experiment saving')
     arg('--encoder', type=str, default='resnet50', help='String model name used for saving')
     arg('--results-dir', type=str, default=RESULTS_DIR, help='Directory for saving model')
     arg('--data-dir', type=str, default=TRAIN_DIR, help='Directory for saving model')
@@ -326,18 +327,21 @@ def main():
     model = get_unet(encoder=args.encoder, in_channels = 4, num_classes = 1, activation = None) 
     # load model weights to continue training
     if args.checkpoint is not None and args.checkpoint != '':
-        load_model(model, args.checkpoint)
+        load_model(model, args.checkpoint)     
+        
 
     train_runner(
         model=model,
         model_name=args.model_name,
         results_dir=args.results_dir,
+        experiment=
         debug=args.debug,
         img_size=args.image_size,
         learning_rate=args.lr,
         epochs=args.epochs,
         batch_size=args.batch_size,
         num_workers=args.num_workers,
+        from_epoch = epoch if epoch else 0,
         save_oof=True,
     )
 
