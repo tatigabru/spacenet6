@@ -117,7 +117,7 @@ def train_runner(model: nn.Module, model_name: str, results_dir: str, experiment
     #criterion = BCEJaccardLoss(bce_weight=0.5, jaccard_weight=0.5, log_loss=False, log_sigmoid=True)
     #criterion = JaccardLoss(log_sigmoid=True, log_loss=False)
     #criterion = L.BinaryFocalLoss()
-    print(optimizer, scheduler, criterion)
+    #print(optimizer, scheduler, criterion)
     
     # logging
     #if not debug:
@@ -165,7 +165,7 @@ def train_runner(model: nn.Module, model_name: str, results_dir: str, experiment
                                  validations_dir)
 
         valid_metrics = validate(model, model_name, dataloader_valid, criterion, epoch,
-                                 validations_dir, save_oof=save_oof)
+                                 validations_dir, save_oof, debug)
         # logging metrics       
         logger.scalar_summary('loss_valid', valid_metrics['val_loss'], epoch)
         logger.scalar_summary('miou_valid', valid_metrics['miou'], epoch)
@@ -221,13 +221,12 @@ def validate_loss(model: nn.Module, model_name: str, dataloader_valid: DataLoade
     Validate model at the epoch end 
        
     Args: 
-        model: current model 
-        dataloader_valid: dataloader for the validation fold
-        device: CUDA or CPU
-        epoch: current epoch
-        save_oof: boolean flag, if calculate oof predictions and save them in pickle 
-        save_oof_numpy: boolean flag, if save oof predictions in numpy 
-        predictions_dir: directory for saving predictions
+        model           : current model 
+        dataloader_valid: dataloader for the validation fold 
+        criterion       : loss criterion 
+        epoch           : current epoch
+        predictions_dir : directory for saving predictions
+
     Output:
         loss_valid: total validation loss, history 
     """
@@ -237,7 +236,6 @@ def validate_loss(model: nn.Module, model_name: str, dataloader_valid: DataLoade
         model.eval()
         val_losses = []
         progress_bar = tqdm(dataloader_valid, total=len(dataloader_valid))
-
         for img, target, _ in progress_bar:
             img = img.to(device)
             target = target.float().to(device)            
@@ -251,7 +249,7 @@ def validate_loss(model: nn.Module, model_name: str, dataloader_valid: DataLoade
 
 
 def validate(model: nn.Module, dataloader_valid: DataLoader, criterion: L, 
-             epoch: int, predictions_dir: str, save_oof: bool = False):
+             epoch: int, predictions_dir: str, save_oof: bool, debug: bool):
     """
     Validate model at the epoch end 
        
@@ -314,7 +312,7 @@ def main():
     arg('--lr', type=float, default=1e-3, help='Initial learning rate')
     arg('--checkpoint', type=str, default=None, help='Checkpoint filename with initial model weights')
     arg('--debug', type=bool, default=False)
-    arg('--save-oof', type=bool, default=False)
+    arg('--oof', type=bool, default=False)
     args = parser.parse_args()
     print(args)
     set_seed(seed=1234)
@@ -335,7 +333,7 @@ def main():
         epochs=args.epochs,
         batch_size=args.batch_size,
         num_workers=args.num_workers,
-        save_oof=args.save_oof,
+        save_oof=True,
     )
 
 
