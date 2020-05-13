@@ -155,7 +155,6 @@ def train_runner(model: nn.Module, model_name: str, results_dir: str, experiment
                 epoch_losses.append(loss.detach().cpu().numpy())
 
                 if batch_num and batch_num % report_batch == 0:                
-                    logging.info(datetime.now().isoformat())
                     logging.info(f'epoch: {epoch}; step: {batch_num}; loss: {np.mean(epoch_losses)} \n')
                 
         # log loss history
@@ -173,7 +172,8 @@ def train_runner(model: nn.Module, model_name: str, results_dir: str, experiment
         # logging metrics       
         logger.scalar_summary('loss_valid', valid_metrics['val_loss'], epoch)
         logger.scalar_summary('miou_valid', valid_metrics['miou'], epoch)
-        logging.info(f'epoch: {epoch}; val_loss: {val_loss} \n')
+        valid_loss, val_metric = valid_metrics['val_loss'], valid_metrics['miou']
+        logging.info(f'epoch: {epoch}; val_bce: {val_loss}; val_loss: {valid_loss}; val_miou: {val_metric}\n')
         val_losses.append(valid_metrics['val_loss'])
         
         # get current learning rate
