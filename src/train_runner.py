@@ -117,7 +117,7 @@ def train_runner(model: nn.Module, model_name: str, results_dir: str, experiment
 
     # criteria
     criterion1 = nn.BCEWithLogitsLoss()                 
-    criterion = BCEJaccardLoss(bce_weight=1, jaccard_weight=0.01, log_loss=False, log_sigmoid=True)
+    criterion = BCEJaccardLoss(bce_weight=1, jaccard_weight=0.5, log_loss=False, log_sigmoid=True)
     #criterion = JaccardLoss(log_sigmoid=True, log_loss=False)
     #criterion = L.BinaryFocalLoss(alpha=0.25, gamma=2)
         
@@ -133,6 +133,7 @@ def train_runner(model: nn.Module, model_name: str, results_dir: str, experiment
 
     train_losses, val_losses = [], []
     best_val_loss = 1e+5
+    best_val_metric = 0
     # training cycle
     print("Start training")
     for epoch in range(from_epoch, from_epoch + epochs + 1):
@@ -182,6 +183,24 @@ def train_runner(model: nn.Module, model_name: str, results_dir: str, experiment
         logging.info(f'learning_rate: {lr}\n')
         scheduler.step()
         
+        # save the best metric
+        if valid_metrics['miou'] > best_val_metric:
+            best_val_metric = valid_metrics['miou']
+            # save model, optimizer and losses after every epoch
+            print(f"Saving model with the best val metric {valid_metrics['miou']}, epoch {epoch}")
+            checkpoint_filename = "{}_best_val_miou.pth".format(model_name)
+            checkpoint_filepath = os.path.join(checkpoints_dir, checkpoint_filename)
+            torch.save(
+                {
+                    'model': model.state_dict(),
+                    'optimizer': optimizer.state_dict(),
+                    'epoch': epoch,
+                    'loss': np.mean(epoch_losses),
+                    'valid_loss': valid_metrics['val_loss'],
+                    'valid_miou': valid_metrics['miou'],
+                },
+                checkpoint_filepath
+            )
         # save the best loss
         if valid_metrics['val_loss'] < best_val_loss:
             best_val_loss = valid_metrics['val_loss']
