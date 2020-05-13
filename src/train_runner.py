@@ -279,9 +279,8 @@ def validate(model: nn.Module, dataloader_valid: DataLoader, criterion: L,
             loss = criterion(output, target)
             val_losses.append(loss.detach().cpu().numpy())         
               
-            iou = binary_iou_pytorch(output, target, from_logits=True)
-            print(f'IoU: {iou}')
-            ious.append(iou)
+            iou = binary_iou_pytorch(output, target, from_logits=True)            
+            ious.append(iou.detach().cpu().numpy())
             # save predictions as pictures for the first batch
             if save_oof and batch_num == 0:
                 output = torch.sigmoid(output)
@@ -292,9 +291,8 @@ def validate(model: nn.Module, dataloader_valid: DataLoader, criterion: L,
                     if pred.ndim == 3:
                         pred = np.squeeze(pred, axis=0)
                     prob_mask = np.rint(pred*255).astype(np.uint8)                    
-                    if debug: 
-                        print(f"{predictions_dir}/{tile_name}.png")
-                        print(prob_mask.shape)                   
+                    print(f"{predictions_dir}/{tile_name}.png")
+                    print(prob_mask.shape)                   
                     prob_mask_rgb = np.repeat(prob_mask[...,None], 3, 2) # repeat array for three channels    
                     cv2.imwrite(f"{predictions_dir}/{tile_name}.png", prob_mask_rgb)                      
     
