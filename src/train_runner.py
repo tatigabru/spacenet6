@@ -35,9 +35,10 @@ from .utils.utils import load_model, load_model_optim, set_seed, write_event
 def train_runner(model: nn.Module, model_name: str, results_dir: str, experiment: str = '', debug: bool = False, img_size: int = IMG_SIZE,
                  learning_rate: float = 1e-2, fold: int = 0, 
                  epochs: int = 15, batch_size: int = 8, num_workers: int = 4, from_epoch: int = 0,
-                 save_oof: bool = False):
+                 save_oof: bool = False, save_train_preds: bool = False):
     """
     Model training runner
+
     Args: 
         model        : PyTorch model
         model_name   : string name for model for checkpoints saving
@@ -50,7 +51,8 @@ def train_runner(model: nn.Module, model_name: str, results_dir: str, experiment
         epochs       : number of the last epochs to train
         batch_size   : number of images in batch
         num_workers  : number of workers available
-        from_epoch   : number of epoch to continue training    
+        from_epoch   : number of epoch to continue training   
+        save_oof     : saves oof validation predictions. Default = False 
     """
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
     print(device)
@@ -114,20 +116,20 @@ def train_runner(model: nn.Module, model_name: str, results_dir: str, experiment
     # scheduler = lr_scheduler.ReduceLROnPlateau(optimizer, patience=2, verbose=True, factor=0.2)
 
     # criteria
-    criterion = nn.BCEWithLogitsLoss()                 
+    #criterion = nn.BCEWithLogitsLoss()                 
     #criterion = BCEJaccardLoss(bce_weight=0.5, jaccard_weight=0.5, log_loss=False, log_sigmoid=True)
     #criterion = JaccardLoss(log_sigmoid=True, log_loss=False)
-    #criterion = L.BinaryFocalLoss()
-    #print(optimizer, scheduler, criterion)
-    
+    criterion = L.BinaryFocalLoss(alpha=0.25, gamma=2)
+        
     # logging
-    #if not debug:
-    report_each = 20    
-    log_file = os.path.join(checkpoints_dir, f'{experiment}_{fold}.log')
+    #if make_log:
+    report_batch = 20  
+    report_epoch = 2  
+    log_file = os.path.join(checkpoints_dir, f'{experiment}fold_{fold}.log')
     logging.basicConfig(filename=log_file, filemode="w", level=logging.DEBUG)  
     logging.info(f'Parameters:\n model_name: {model_name}\n, results_dir: {results_dir}\n, experiment: {experiment}\n, img_size: {img_size}\n, \
                  learning_rate: {learning_rate}\n, fold: {fold}\n, epochs: {epochs}\n, batch_size: {batch_size}\n, num_workers: {num_workers}\n, \
-                 from_epoch: {from_epoch}\n, save_oof: {save_oof}\n, optimizer: {optimizer}\n, ')
+                 from_epoch: {from_epoch}\n, save_oof: {save_oof}\n, optimizer: {optimizer}\n')
 
     train_losses, val_losses = [], []
     best_val_loss = 1e+5
@@ -151,7 +153,7 @@ def train_runner(model: nn.Module, model_name: str, results_dir: str, experiment
                 optimizer.step()
                 epoch_losses.append(loss.detach().cpu().numpy())
 
-                if batch_num and batch_num % report_each == 0:                
+                if batch_num and batch_num % report_batch == 0:                
                     logging.info(datetime.now().isoformat())
                     logging.info(f'epoch: {epoch}; step: {batch_num}; loss: {np.mean(epoch_losses)} \n')
                 
@@ -199,7 +201,7 @@ def train_runner(model: nn.Module, model_name: str, results_dir: str, experiment
                 checkpoint_filepath
             )
         # save model, optimizer and losses after every n epoch
-        elif epoch % 20 == 0:            
+        elif epoch % report_epoch == 0:            
             print(f"Saving model at epoch {epoch}, val loss {valid_metrics['val_loss']}")
             checkpoint_filename = "{}_epoch_{}.pth".format(model_name, epoch)
             checkpoint_filepath = os.path.join(checkpoints_dir, checkpoint_filename)
@@ -286,13 +288,10 @@ def validate(model: nn.Module, dataloader_valid: DataLoader, criterion: L,
                 output = torch.sigmoid(output)
                 output = output.cpu().numpy().copy()
                 for num, pred in enumerate(output, start=0):
-                    tile_name = tile_ids[num]
-                    print(pred.shape)  
+                    tile_name = tile_ids[num]                     
                     if pred.ndim == 3:
                         pred = np.squeeze(pred, axis=0)
-                    prob_mask = np.rint(pred*255).astype(np.uint8)                    
-                    print(f"{predictions_dir}/{tile_name}.png")
-                    print(prob_mask.shape)                   
+                    prob_mask = np.rint(pred*255).astype(np.uint8)                   
                     prob_mask_rgb = np.repeat(prob_mask[...,None], 3, 2) # repeat array for three channels    
                     cv2.imwrite(f"{predictions_dir}/{tile_name}.png", prob_mask_rgb)                      
     
@@ -317,7 +316,8 @@ def main():
     arg('--lr', type=float, default=1e-3, help='Initial learning rate')
     arg('--checkpoint', type=str, default=None, help='Checkpoint filename with initial model weights')
     arg('--debug', type=bool, default=False)
-    arg('--oof', type=bool, default=False)
+    arg('--val-oof', type=bool, default=False)
+    arg('--train-oof', type=bool, default=False)
     args = parser.parse_args()
     print(args)
     set_seed(seed=1234)
