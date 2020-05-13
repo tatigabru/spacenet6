@@ -288,9 +288,15 @@ def validate(model: nn.Module, dataloader_valid: DataLoader, criterion: L,
                 output = output.cpu().numpy().copy()
                 for num, pred in enumerate(output, start=0):
                     tile_name = tile_ids[num]
-                    prob_mask = (pred * 255).astype(np.uint8)
-                    if debug: print(f"{predictions_dir}/{tile_name}.png")
-                    cv2.imwrite(f"{predictions_dir}/{tile_name}.png", prob_mask)                      
+                    print(pred.shape)  
+                    if pred.ndim == 3:
+                        pred = np.squeeze(pred, axis=0)
+                    prob_mask = np.rint(pred*255).astype(np.uint8)                    
+                    if debug: 
+                        print(f"{predictions_dir}/{tile_name}.png")
+                        print(prob_mask.shape)                   
+                    prob_mask_rgb = np.repeat(prob_mask[...,None], 3, 2) # repeat array for three channels    
+                    cv2.imwrite(f"{predictions_dir}/{tile_name}.png", prob_mask_rgb)                      
     
     print("Epoch {}, Valid Loss: {}, mIoU: {}".format(epoch, np.mean(val_losses), np.mean(ious)))
     # loss and metrics averaged over all batches

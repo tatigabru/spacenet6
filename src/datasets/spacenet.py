@@ -105,8 +105,7 @@ class TestSARDataset(Dataset):
     SpaceNet 6 SAR Dataset
 
     Args:         
-        sars_dir  : directory with SARs inputs        
-        labels_df : true labels (as polygons)   
+        sars_dir  : directory with SARs inputs          
         img_size  : the desired image size to resize to for prograssive learning
         transforms: the name of transforms setfrom the transfroms dictionary  
         debug     : if True, runs debugging on a few images. Default: 'False'   
@@ -114,8 +113,7 @@ class TestSARDataset(Dataset):
 
     """
     def __init__(self, 
-                sars_dir: str,          
-                labels_df: pd.DataFrame,           
+                sars_dir: str,                         
                 img_size: int = 512,                 
                 transforms: str ='valid', 
                 preprocess: bool = True,
@@ -129,8 +127,7 @@ class TestSARDataset(Dataset):
         self.preprocess = preprocess
         self.normalise = normalise        
         self.img_size = img_size
-        self.transforms = transforms
-        #self.ids = labels_df.ImageId.values    
+        self.transforms = transforms        
         sar_ids = os.listdir(sars_dir)
         self.ids = [s[41:-4] for s in sar_ids]
         # select a subset for the debugging

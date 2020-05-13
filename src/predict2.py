@@ -98,8 +98,7 @@ def generate_pedictions(predictions_dir: str, checkpoints_dir: str, debug: bool,
             img = img.to(device)
             target = target.float().to(device)
             output = model(img)  
-            output = torch.sigmoid(output)   
-
+            output = torch.sigmoid(output) 
             output = output.cpu().numpy().copy()
 
             for num, pred in enumerate(output, start=0):
