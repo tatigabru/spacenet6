@@ -326,6 +326,7 @@ def main():
     # 1 channel, no activation (use sigmoid later)
     model = get_unet(encoder=args.encoder, in_channels = 4, num_classes = 1, activation = None) 
     # load model weights to continue training
+    epoch = 0
     if args.checkpoint is not None and args.checkpoint != '':
         load_model(model, args.checkpoint)     
         
@@ -341,7 +342,7 @@ def main():
         epochs=args.epochs,
         batch_size=args.batch_size,
         num_workers=args.num_workers,
-        from_epoch = epoch if epoch else 0,
+        from_epoch = epoch,
         save_oof=True,
     )
 
