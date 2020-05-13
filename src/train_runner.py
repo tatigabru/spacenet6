@@ -161,10 +161,10 @@ def train_runner(model: nn.Module, model_name: str, results_dir: str, experiment
         logging.info(f'epoch: {epoch}; step: {batch_num}; loss: {np.mean(epoch_losses)} \n')
 
         # validate model
-        val_loss = validate_loss(model, model_name, dataloader_valid, criterion, epoch,
+        val_loss = validate_loss(model, dataloader_valid, criterion, epoch,
                                  validations_dir)
 
-        valid_metrics = validate(model, model_name, dataloader_valid, criterion, epoch,
+        valid_metrics = validate(model, dataloader_valid, criterion, epoch,
                                  validations_dir, save_oof, debug)
         # logging metrics       
         logger.scalar_summary('loss_valid', valid_metrics['val_loss'], epoch)
@@ -215,7 +215,7 @@ def train_runner(model: nn.Module, model_name: str, results_dir: str, experiment
             )    
 
 
-def validate_loss(model: nn.Module, model_name: str, dataloader_valid: DataLoader, criterion: L, epoch: int,
+def validate_loss(model: nn.Module, dataloader_valid: DataLoader, criterion: L, epoch: int,
                   predictions_dir: str) -> float:
     """
     Validate model at the epoch end 
