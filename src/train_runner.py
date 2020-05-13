@@ -334,7 +334,7 @@ def main():
         model=model,
         model_name=args.model_name,
         results_dir=args.results_dir,
-        experiment=
+        experiment=args.experiment,
         debug=args.debug,
         img_size=args.image_size,
         learning_rate=args.lr,
