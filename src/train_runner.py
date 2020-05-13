@@ -43,7 +43,7 @@ def train_runner(model: nn.Module, model_name: str, results_dir: str, experiment
         results_dir  : directory to save results
         experiment   : string name for naming experiments
         debug        : if True, runs the debugging on few images 
-        img_size     : size of images for training (for pregressive learning)
+        img_size     : size of images for training 
         learning_rate: initial learning rate (default = 1e-2) 
         fold         : training fold (default = 0)
         epochs       : number of the last epochs to train
@@ -243,6 +243,7 @@ def validate_loss(model: nn.Module, model_name: str, dataloader_valid: DataLoade
             output = model(img)          
             loss = criterion(output, target)
             val_losses.append(loss.detach().cpu().numpy())
+            
     print("Epoch {}, Valid Loss: {}".format(epoch, np.mean(val_losses)))
 
     return np.mean(val_losses)
@@ -273,8 +274,7 @@ def validate(model: nn.Module, model_name: str, dataloader_valid: DataLoader, cr
         for batch_num, (img, target, tile_ids) in enumerate(progress_bar):  # iterate over batches
             img = img.to(device)
             target = target.float().to(device)
-            output = model(img)                             
-            
+            output = model(img)                      
             loss = criterion(output, target)
             val_losses.append(loss.detach().cpu().numpy())         
               
@@ -283,14 +283,15 @@ def validate(model: nn.Module, model_name: str, dataloader_valid: DataLoader, cr
             ious.append(iou)
             # save predictions as pictures for the first batch
             if save_oof and batch_num == 0:
+                output = torch.sigmoid(output)
                 output = output.cpu().numpy().copy()
                 for num, pred in enumerate(output, start=0):
                     tile_name = tile_ids[num]
                     prob_mask = (pred * 255).astype(np.uint8)
-                    print(f"{predictions_dir}/{tile_name}.png")
-                    cv2.imwrite(f"{predictions_dir}/{tile_name}.png", prob_mask)                         
+                    if debug: print(f"{predictions_dir}/{tile_name}.png")
+                    cv2.imwrite(f"{predictions_dir}/{tile_name}.png", prob_mask)                      
     
-    print("Epoch {}, Valid Loss: {}, mIoU: {}, F1 mean".format(epoch, np.mean(val_losses), np.mean(ious)))
+    print("Epoch {}, Valid Loss: {}, mIoU: {}".format(epoch, np.mean(val_losses), np.mean(ious)))
     # loss and metrics averaged over all batches
     metrics = {'val_loss': np.mean(val_losses), 'miou': np.mean(ious)}
     

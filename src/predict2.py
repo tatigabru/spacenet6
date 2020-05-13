@@ -33,22 +33,32 @@ from .utils.utils import load_model, load_model_optim, set_seed, write_event
 
 
 
-def generate_pediciton(checkpoint: str, debug: bool, fold: int=0,  save_oof: bool=True, img_size: int=IMG_SIZE, from_epoch: int=0, to_epoch: int=10):
+def generate_pedictions(predictions_dir: str, checkpoints_dir: str, debug: bool, fold: int=0, save_oof: bool=True, img_size: int=IMG_SIZE, 
+                        num_workers: int = 2, batch_size: int = 2, from_epoch: int=0, to_epoch: int=10):
     """
-        Make validation predictions
-        
+    Loads model weights from the checkpoint, 
+    Makes validation predictions and saves as images
+    
         Args: 
-            model_name : string name from the models configs listed in models.py file
-            fold: evaluation fold number, 0-3
-            debug: if True, runs the debugging on few images 
-            epochs: number of epochs to train
+            predictions_dir: directory for saveing predictions
             checkpoints_dir: directory with weights 
-            from_epoch, to_epoch: the first ad last epochs for predicitions generation  
+            model_name     : string name from the models configs listed in models.py file
+            fold           : evaluation fold number, 0-3
+            debug          : if True, runs debugging on few images
+            img_size       : size of images for validation
+            batch_size     : number of images in batch
+            num_workers    : number of workers available
+            from_epoch     : the first epoch for predicitions generation 
+            to_epoch       : the last epoch for predicitions generation            
     """
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    print("device: ", device)    
+    os.makedirs(predictions_dir, exist_ok=True)
+
     df = pd.read_csv(f'{TRAIN_DIR}folds.csv')
     df_val = df[df.fold == fold]
-    
-    # dataset for validation
+
+     # dataset for validation
     valid_dataset = SARDataset(
                 sars_dir  = TRAIN_SAR, 
                 masks_dir = TRAIN_MASKS,
@@ -58,16 +68,45 @@ def generate_pediciton(checkpoint: str, debug: bool, fold: int=0,  save_oof: boo
                 preprocess= True,
                 normalise = True,              
                 debug     = debug,   
-    )       
-
+    )     
     # dataloaders for train and validation    
     dataloader_valid = DataLoader(valid_dataset,
                                   num_workers=num_workers,
                                   batch_size=batch_size,
                                   shuffle=False,
                                   drop_last=True)
-    print('{} training images, {} validation images'.format(len(train_dataset), len(valid_dataset)))    
+    print('{} validation images'.format(len(valid_dataset)))  
 
+    # load checkpoints
+    for epoch_num in range(from_epoch, to_epoch):
+        prediction_fn = f"{predictions_dir}/{epoch_num:03}.pkl"
+        if os.path.exists(prediction_fn):
+            continue
+        print("epoch", epoch_num)
+        # load model checkpoint
+        checkpoint = (f"{checkpoints_dir}/{model_name}_{epoch_num:03}.pt")
+        print("load", checkpoint)
+        try:
+            model = torch.load(checkpoint)
+        except FileNotFoundError:
+            break
+        model = model.to(device)
+        model.eval()
+
+        progress_bar = tqdm(dataloader_valid, total=len(dataloader_valid))        
+        for batch_num, (img, target, tile_ids) in enumerate(progress_bar):  # iterate over batches
+            img = img.to(device)
+            target = target.float().to(device)
+            output = model(img)  
+            output = torch.sigmoid(output)   
+
+            output = output.cpu().numpy().copy()
+
+            for num, pred in enumerate(output, start=0):
+                tile_name = tile_ids[num]
+                prob_mask = (pred * 255).astype(np.uint8)
+                if debug: print(f"{predictions_dir}/{tile_name}.png")
+                cv2.imwrite(f"{predictions_dir}/{tile_name}.png", prob_mask)    
 
 
 def predict_test(model_name: str, fold: int, debug: bool, checkpoints_dir: str, save_oof: bool=True, img_size: int=IMG_SIZE, from_epoch: int=0, to_epoch: int=10):
@@ -88,7 +127,7 @@ def predict_test(model_name: str, fold: int, debug: bool, checkpoints_dir: str, 
     print("\n", model_name, "\n")
 
     # test dataset
-    test_dataset = SARDataset(
+    test_dataset = TestSARDataset(
                 sars_dir  = TEST_SAR,          
                 img_size  = img_size,                
                 transforms= TRANSFORMS["hflip"],
@@ -98,7 +137,7 @@ def predict_test(model_name: str, fold: int, debug: bool, checkpoints_dir: str, 
     )       
 
     # dataloaders for train and validation    
-    dataloader_valid = DataLoader(valid_dataset,
+    dataloader_test = DataLoader(test_dataset,
                                   num_workers=num_workers,
                                   batch_size=batch_size,
                                   shuffle=False,
@@ -117,7 +156,7 @@ def predict_test(model_name: str, fold: int, debug: bool, checkpoints_dir: str, 
         data_iter = tqdm(enumerate(dataloader_test), total=len(dataloader_test))
         oof = collections.defaultdict(list)
 
-        for iter_num, data in data_iter:
+        for  in data_iter:
             res = retinanet([data["img"].cuda().float(), data["annot"].cuda().float(), data["category"].cuda()], return_loss=False, return_boxes=True)
             nms_scores, global_class, transformed_anchors = res
             if save_oof:
@@ -173,7 +212,7 @@ def plot_predictions(input_image: Tensor, prediction: Tensor, target: Tensor, pr
     plt.axis("off")
     if save_fig:
         plt.savefig(os.path.join(predictions_dir, f"preds_{checkpoint_name}.png")) 
-
+    plt.show()
 
 def main():
     parser = argparse.ArgumentParser()
