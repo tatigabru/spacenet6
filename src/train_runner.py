@@ -23,7 +23,7 @@ from .datasets.transforms import TRANSFORMS
 from .losses.bce_jaccard import BCEJaccardLoss
 from .losses.dice import DiceLoss
 from .losses.jaccard import JaccardLoss
-from .models.get_models import get_fpn, get_unet
+from .utils.get_models import get_unet
 from .utils.f1_metric import binary_iou, buildings_f1_fast
 from .utils.iou import binary_iou_numpy, binary_iou_pytorch, official_iou
 from .utils.logger import Logger
@@ -92,8 +92,7 @@ def train_runner(model: nn.Module, model_name: str, results_dir: str, experiment
                 preprocess= True,
                 normalise = True,              
                 debug     = debug,   
-    )       
-
+    )
     # dataloaders for train and validation
     dataloader_train = DataLoader(train_dataset,
                                   num_workers=num_workers,
@@ -114,8 +113,8 @@ def train_runner(model: nn.Module, model_name: str, results_dir: str, experiment
     # scheduler = lr_scheduler.ReduceLROnPlateau(optimizer, patience=2, verbose=True, factor=0.2)
 
     # criteria
-    #criterion = nn.BCEWithLogitsLoss()                 
-    criterion = BCEJaccardLoss(bce_weight = 0.5, jaccard_weight = 0.5, log_loss = False, log_sigmoid = True)
+    criterion = nn.BCEWithLogitsLoss()                 
+    #criterion = BCEJaccardLoss(bce_weight=0.5, jaccard_weight=0.5, log_loss=False, log_sigmoid=True)
     #criterion = JaccardLoss(log_sigmoid=True, log_loss=False)
     #criterion = L.BinaryFocalLoss()
     print(optimizer, scheduler, criterion)
@@ -172,12 +171,15 @@ def train_runner(model: nn.Module, model_name: str, results_dir: str, experiment
         logger.scalar_summary('miou_valid', valid_metrics['miou'], epoch)
         logging.info(f'epoch: {epoch}; val_loss: {val_loss} \n')
         val_losses.append(valid_metrics['val_loss'])
-        # print current learning rate
-        for param_group in optimizer.param_groups:
-            print('learning_rate:', param_group['lr'])
-            logging.info(f'learning_rate: {param_group['lr']}\n')
+        
+        # get current learning rate
+        for param_group in optimizer.param_groups:            
+            lr = param_group['lr']
+        print(f'learning_rate: {lr}')    
+        logging.info(f'learning_rate: {lr}\n')
         scheduler.step()
-
+        
+        # save the best loss
         if valid_metrics['val_loss'] < best_val_loss:
             best_val_loss = valid_metrics['val_loss']
             # save model, optimizer and losses after every epoch
@@ -195,9 +197,8 @@ def train_runner(model: nn.Module, model_name: str, results_dir: str, experiment
                 },
                 checkpoint_filepath
             )
-
-        elif epoch % 20 == 0:
-            # save model, optimizer and losses after every n epoch
+        # save model, optimizer and losses after every n epoch
+        elif epoch % 20 == 0:            
             print(f"Saving model at epoch {epoch}, val loss {valid_metrics['val_loss']}")
             checkpoint_filename = "{}_epoch_{}.pth".format(model_name, epoch)
             checkpoint_filepath = os.path.join(checkpoints_dir, checkpoint_filename)
@@ -214,7 +215,7 @@ def train_runner(model: nn.Module, model_name: str, results_dir: str, experiment
             )    
 
 
-def validate_loss(model: nn.Module, model_name: str, dataloader_valid: DataLoader, criterion, epoch: int,
+def validate_loss(model: nn.Module, model_name: str, dataloader_valid: DataLoader, criterion: L, epoch: int,
                   predictions_dir: str) -> float:
     """
     Validate model at the epoch end 
@@ -243,24 +244,25 @@ def validate_loss(model: nn.Module, model_name: str, dataloader_valid: DataLoade
             output = model(img)          
             loss = criterion(output, target)
             val_losses.append(loss.detach().cpu().numpy())
-            
+
     print("Epoch {}, Valid Loss: {}".format(epoch, np.mean(val_losses)))
 
     return np.mean(val_losses)
 
 
-def validate(model: nn.Module, model_name: str, dataloader_valid: DataLoader, criterion: L, 
+def validate(model: nn.Module, dataloader_valid: DataLoader, criterion: L, 
              epoch: int, predictions_dir: str, save_oof: bool = False):
     """
     Validate model at the epoch end 
        
     Args: 
-        model: current model 
-        dataloader_valid: dataloader for the validation fold
-        device: GPU or CPU
-        epoch: current epoch
-        save_oof: boolean flag, if calculate oof predictions and save them in pickle 
-        predictions_dir: directory for saving predictions
+        model           : current model 
+        dataloader_valid: dataloader for the validation fold 
+        criterion       : loss criterion 
+        epoch           : current epoch
+        save_oof        : if true, calculate oof predictions and save them as png 
+        predictions_dir : directory for saving predictions
+
     Output:
         metrics: dictionary with validation metrics 
     """
@@ -316,8 +318,9 @@ def main():
     args = parser.parse_args()
     print(args)
     set_seed(seed=1234)
-   
-    model = get_unet(encoder=args.encoder, in_channels = 4, num_classes = 1, activation = None) # +1 for background, 0 on the masks
+
+    # 1 channel, no activation (use sigmoid later)
+    model = get_unet(encoder=args.encoder, in_channels = 4, num_classes = 1, activation = None) 
     # load model weights to continue training
     if args.checkpoint is not None and args.checkpoint != '':
         load_model(model, args.checkpoint)
@@ -332,7 +335,7 @@ def main():
         epochs=args.epochs,
         batch_size=args.batch_size,
         num_workers=args.num_workers,
-        save_oof=False,
+        save_oof=args.save_oof,
     )
 
 

@@ -12,7 +12,7 @@ TEST_SAR = f"{TEST_DIR}SAR-Intensity/"
 RESULTS_DIR = "../output/"
 LOSS = "cross_entropy"
 
-NUM_CLASSES = 2
+NUM_CLASSES = 1
 IMG_SIZE = 224
 
 

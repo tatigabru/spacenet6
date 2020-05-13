@@ -11,7 +11,7 @@ import torch
 from torch.utils.data import Dataset
 
 from ..configs import (IMG_SIZE, TRAIN_JSON, TRAIN_MASKS, TRAIN_META, TRAIN_RGB,
-                     TRAIN_SAR, TRAIN_DIR)
+                     TRAIN_SAR, TRAIN_DIR, ON_SERVER)
 from .transforms import TRANSFORMS
  
 warnings.simplefilter("ignore")
@@ -50,12 +50,12 @@ class SARDataset(Dataset):
         self.normalise = normalise        
         self.img_size = img_size
         self.transforms = transforms
-        #self.ids = labels_df.ImageId.values    
         sar_ids = os.listdir(sars_dir)
-        self.ids = [s[41:-4] for s in sar_ids]
+        self.ids = labels_df.ImageId.values if ON_SERVER else [s[41:-4] for s in sar_ids]    
+        
         # select a subset for the debugging
         if self.debug:
-            self.ids = self.ids[:160]
+            self.ids = self.ids[:160] if ON_SERVER else self.ids[:16]
             print('Debug mode, samples: ', self.ids[:10])  
 
     def __len__(self):
