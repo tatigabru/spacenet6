@@ -18,7 +18,7 @@ def set_seed(seed: int=1234):
         torch.backends.cudnn.deterministic = True
 
 
-def load_model_optim(model: nn.Module, optimizer, checkpoint_path: str):
+def load_model_optim(model: nn.Module, optimizer: torch.optim, checkpoint_path: str):
     """Loads model weigths and optimizer, epoch, to continuer training
     """  
     checkpoint = torch.load(checkpoint_path)
@@ -33,6 +33,11 @@ def load_model_optim(model: nn.Module, optimizer, checkpoint_path: str):
     for param_group in optimizer.param_groups:
         print('learning_rate:', param_group['lr'])
     print('Loaded model from {}, epoch {}'.format(checkpoint_path, epoch))
+    val_loss = checkpoint['valid_loss'] 
+    metric = checkpoint['valid_miou']    
+    print('Validation miou {}, Validation loss {}'.format(metric, val_loss))
+
+    return model, optimizer, epoch
 
 
 def load_model(model: nn.Module, checkpoint_path: str):
@@ -41,7 +46,10 @@ def load_model(model: nn.Module, checkpoint_path: str):
     checkpoint = torch.load(checkpoint_path)
     model.load_state_dict(checkpoint['model'])
     epoch = checkpoint['epoch']+1
+    moiu = checkpoint['epoch']
     print('Loaded model from {}, epoch {}'.format(checkpoint_path, epoch))
+
+    return model, epoch
  
  
 def write_event(log, step, **data):

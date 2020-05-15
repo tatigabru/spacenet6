@@ -32,8 +32,8 @@ from .utils.utils import load_model, load_model_optim, set_seed
 
 
 def train_runner(model: nn.Module, model_name: str, results_dir: str, experiment: str = '', debug: bool = False, img_size: int = IMG_SIZE,
-                 learning_rate: float = 1e-2, fold: int = 0, 
-                 epochs: int = 15, batch_size: int = 8, num_workers: int = 4, from_epoch: int = 0,
+                 learning_rate: float = 1e-2, fold: int = 0, checkpoint: str = '',
+                 epochs: int = 15, batch_size: int = 8, num_workers: int = 4, start_epoch: int = 0,
                  save_oof: bool = False, save_train_oof: bool = False, gpu: int = 0):
     """
     Model training runner
@@ -112,12 +112,15 @@ def train_runner(model: nn.Module, model_name: str, results_dir: str, experiment
     #scheduler = lr_scheduler.MultiStepLR(optimizer, milestones=[60, 120, 180], gamma=0.2)    
     scheduler = lr_scheduler.ReduceLROnPlateau(optimizer, mode='max', patience=5, verbose=True, factor=0.2, min_lr=1e-6)
 
+    # load model weights to continue training    
+    if checkpoint != '':
+        model, optimizer, start_epoch = load_model_optim(model, optimizer, checkpoint)    
+
     # criteria
     criterion1 = nn.BCEWithLogitsLoss()                 
     criterion = BCEJaccardLoss(bce_weight=2, jaccard_weight=0.5, log_loss=False, log_sigmoid=True)
     #criterion = JaccardLoss(log_sigmoid=True, log_loss=False)
-    #criterion = L.BinaryFocalLoss(alpha=0.25, gamma=2)
-        
+            
     # logging
     #if make_log:
     report_batch = 200  
@@ -323,6 +326,7 @@ def main():
     arg('--experiment', type=str, default='', help='String name for the experiment saving')
     arg('--encoder', type=str, default='resnet50', help='String model name used for saving')
     arg('--results-dir', type=str, default=RESULTS_DIR, help='Directory for saving model')
+    arg('--checkpoint', type=str, default='', help='Filepath ro checkpoint')
     arg('--data-dir', type=str, default=TRAIN_DIR, help='Directory for saving model')
     arg('--image-size', type=int, default=IMG_SIZE, help='Image size for training')
     arg('--batch-size', type=int, default=4, help='Batch size during training')
@@ -340,29 +344,28 @@ def main():
 
     # 1 channel, no activation (use sigmoid later)
     model = get_unet(encoder=args.encoder, in_channels = 4, num_classes = 1, activation = None) 
-    # load model weights to continue training
-    epoch = 0
+
+    # load model weights to continue training    
     if args.resume:
         checkpoints_dir = f'{args.results_dir}rgb/checkpoints/{args.model_name}'
         checkpoint_filename = f"{args.model_name}_best_val_miou.pth"        
         checkpoint_filepath = os.path.join(checkpoints_dir, checkpoint_filename)
-        load_model(model, checkpoint_filepath)     
-        
+
         
     train_runner(
         model=model,
         model_name=args.model_name,
         results_dir=args.results_dir,
         experiment=args.experiment,
+        checkpoint=checkpoint_filepath,
         debug=args.debug,
         img_size=args.image_size,
         learning_rate=args.lr,
         epochs=args.epochs,
         batch_size=args.batch_size,
-        num_workers=args.num_workers,
-        from_epoch=epoch,
+        num_workers=args.num_workers,        
         save_oof=True,
-        gpu=args.gpu,
+        gpu=args.gpu,        
     )
 
 
