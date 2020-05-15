@@ -34,7 +34,7 @@ from .utils.utils import load_model, load_model_optim, set_seed
 def train_runner(model: nn.Module, model_name: str, results_dir: str, experiment: str = '', debug: bool = False, img_size: int = IMG_SIZE,
                  learning_rate: float = 1e-2, fold: int = 0, checkpoint: str = '',
                  epochs: int = 15, batch_size: int = 8, num_workers: int = 4, start_epoch: int = 0,
-                 save_oof: bool = False, save_train_oof: bool = False, gpu: int = 0):
+                 save_oof: bool = False, save_train_oof: bool = False, gpu: str = '0'):
     """
     Model training runner
 
@@ -116,7 +116,7 @@ def train_runner(model: nn.Module, model_name: str, results_dir: str, experiment
         model, optimizer, start_epoch = load_model_optim(model, optimizer, checkpoint) 
         start_epoch += 1  
 
-    model = model.cuda() 
+    model = model.to(device) 
     # criteria
     criterion1 = nn.BCEWithLogitsLoss()                 
     criterion = BCEJaccardLoss(bce_weight=2, jaccard_weight=0.5, log_loss=False, log_sigmoid=True)
@@ -144,8 +144,8 @@ def train_runner(model: nn.Module, model_name: str, results_dir: str, experiment
         progress_bar.set_description('Epoch {}'.format(epoch))       
         with torch.set_grad_enabled(True): # --> sometimes people write it, idk
             for batch_num, (img, target, _) in enumerate(progress_bar):
-                img = img.cuda() #to(device)
-                target = target.float().cuda() #to(device)
+                img = img.to(device)
+                target = target.float().to(device)
                 prediction = model(img)                
                 
                 loss = criterion(prediction, target)
@@ -253,7 +253,6 @@ def validate_loss(model: nn.Module, dataloader_valid: DataLoader, criterion: L, 
     Output:
         loss_valid: total validation loss, history 
     """
-    #device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
     with torch.no_grad():
         model.eval()
         val_losses = []
@@ -286,7 +285,6 @@ def validate(model: nn.Module, dataloader_valid: DataLoader, criterion: L,
     Output:
         metrics: dictionary with validation metrics 
     """
-    #device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
     with torch.no_grad():
         model.eval()      
         ious, val_losses = [], []        
@@ -343,7 +341,7 @@ def main():
     print(args)
     set_seed(seed=1234)
 
-    os.environ["CUDA_VISIBLE_DEVICES"]="1"
+    os.environ["CUDA_VISIBLE_DEVICES"]=args.gpu
     # 1 channel, no activation (use sigmoid later)
     model = get_unet(encoder=args.encoder, in_channels = 4, num_classes = 1, activation = None) 
 
@@ -366,7 +364,8 @@ def main():
         epochs=args.epochs,
         batch_size=args.batch_size,
         num_workers=args.num_workers,        
-        save_oof=True,                
+        save_oof=True,  
+        gpu=args.gpu,              
     )
 
 
