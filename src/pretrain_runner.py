@@ -34,7 +34,7 @@ from .utils.utils import load_model, load_model_optim, set_seed
 def train_runner(model: nn.Module, model_name: str, results_dir: str, experiment: str = '', debug: bool = False, img_size: int = IMG_SIZE,
                  learning_rate: float = 1e-2, fold: int = 0, 
                  epochs: int = 15, batch_size: int = 8, num_workers: int = 4, from_epoch: int = 0,
-                 save_oof: bool = False, save_train_oof: bool = False):
+                 save_oof: bool = False, save_train_oof: bool = False, gpu: int = 0):
     """
     Model training runner
 
@@ -53,7 +53,7 @@ def train_runner(model: nn.Module, model_name: str, results_dir: str, experiment
         from_epoch   : number of epoch to continue training   
         save_oof     : saves oof validation predictions. Default = False 
     """
-    device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+    device = torch.device(f'cuda:{gpu}' if torch.cuda.is_available() else 'cpu')
     print(device)
 
     # creates directories for checkpoints, tensorboard and predicitons
@@ -162,10 +162,10 @@ def train_runner(model: nn.Module, model_name: str, results_dir: str, experiment
 
         # validate model
         val_loss = validate_loss(model, dataloader_valid, criterion1, epoch,
-                                 validations_dir)
+                                 validations_dir, device)
 
         valid_metrics = validate(model, dataloader_valid, criterion, epoch,
-                                 validations_dir, save_oof)
+                                 validations_dir, save_oof, device)
         # logging metrics       
         logger.scalar_summary('loss_valid', valid_metrics['val_loss'], epoch)
         logger.scalar_summary('miou_valid', valid_metrics['miou'], epoch)
@@ -235,7 +235,7 @@ def train_runner(model: nn.Module, model_name: str, results_dir: str, experiment
 
 
 def validate_loss(model: nn.Module, dataloader_valid: DataLoader, criterion: L, epoch: int,
-                  predictions_dir: str) -> float:
+                  predictions_dir: str, device: torch.device) -> float:
     """
     Validate model at the epoch end 
        
@@ -249,8 +249,7 @@ def validate_loss(model: nn.Module, dataloader_valid: DataLoader, criterion: L, 
     Output:
         loss_valid: total validation loss, history 
     """
-    device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
-
+    #device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
     with torch.no_grad():
         model.eval()
         val_losses = []
@@ -268,7 +267,7 @@ def validate_loss(model: nn.Module, dataloader_valid: DataLoader, criterion: L, 
 
 
 def validate(model: nn.Module, dataloader_valid: DataLoader, criterion: L, 
-             epoch: int, predictions_dir: str, save_oof: bool):
+             epoch: int, predictions_dir: str, save_oof: bool, , device: torch.device):
     """
     Validate model at the epoch end 
        
@@ -283,8 +282,7 @@ def validate(model: nn.Module, dataloader_valid: DataLoader, criterion: L,
     Output:
         metrics: dictionary with validation metrics 
     """
-    device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
-
+    #device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
     with torch.no_grad():
         model.eval()      
         ious, val_losses = [], []        
@@ -335,6 +333,7 @@ def main():
     arg('--debug', type=bool, default=False, help='If True runs in debug mode')
     arg('--val-oof', type=bool, default=False)
     arg('--train-oof', type=bool, default=False)
+    arg('--gpu', type=int, default=0, help='Number of the GPU to use: 0, 1')
     args = parser.parse_args()
     print(args)
     set_seed(seed=1234)
