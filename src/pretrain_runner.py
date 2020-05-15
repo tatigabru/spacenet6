@@ -34,7 +34,7 @@ from .utils.utils import load_model, load_model_optim, set_seed
 def train_runner(model: nn.Module, model_name: str, results_dir: str, experiment: str = '', debug: bool = False, img_size: int = IMG_SIZE,
                  learning_rate: float = 1e-2, fold: int = 0, checkpoint: str = '',
                  epochs: int = 15, batch_size: int = 8, num_workers: int = 4, start_epoch: int = 0,
-                 save_oof: bool = False, save_train_oof: bool = False, gpu: str = '0'):
+                 save_oof: bool = False, save_train_oof: bool = False, gpu: int = 1):
     """
     Model training runner
 
@@ -336,12 +336,12 @@ def main():
     arg('--debug', type=bool, default=False, help='If True runs in debug mode')
     arg('--val-oof', type=bool, default=False)
     arg('--train-oof', type=bool, default=False)   
-    arg('--gpu', type=str, default='0', help='Number of the GPU to use: 0, 1')
+    arg('--gpu', type=int, default=1, help='Number of the GPU to use: 0, 1')
     args = parser.parse_args()
     print(args)
     set_seed(seed=1234)
 
-    os.environ["CUDA_VISIBLE_DEVICES"]="1"
+    os.environ["CUDA_VISIBLE_DEVICES"]=1
     # 1 channel, no activation (use sigmoid later)
     model = get_unet(encoder=args.encoder, in_channels = 4, num_classes = 1, activation = None) 
 
