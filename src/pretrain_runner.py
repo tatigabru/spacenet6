@@ -53,7 +53,7 @@ def train_runner(model: nn.Module, model_name: str, results_dir: str, experiment
         from_epoch   : number of epoch to continue training   
         save_oof     : saves oof validation predictions. Default = False 
     """
-    device = torch.device(f'cuda:0' if torch.cuda.is_available() else 'cpu')
+    device = torch.device(f'cuda:1' if torch.cuda.is_available() else 'cpu')
     print(device)
 
     # creates directories for checkpoints, tensorboard and predicitons
@@ -294,8 +294,8 @@ def validate(model: nn.Module, dataloader_valid: DataLoader, criterion: L,
         progress_bar = tqdm(dataloader_valid, total=len(dataloader_valid))
         
         for batch_num, (img, target, tile_ids) in enumerate(progress_bar):  # iterate over batches
-            img = img.to(device)
-            target = target.float().to(device)
+            img = img.cuda()
+            target = target.float().cuda()
             output = model(img) 
             loss = criterion(output, target)
             val_losses.append(loss.detach().cpu().numpy())         
