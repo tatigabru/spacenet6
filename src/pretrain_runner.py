@@ -343,7 +343,8 @@ def main():
     args = parser.parse_args()
     print(args)
     set_seed(seed=1234)
-
+    
+    os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"
     os.environ["CUDA_VISIBLE_DEVICES"]='1'
     # 1 channel, no activation (use sigmoid later)
     model = get_unet(encoder=args.encoder, in_channels = 4, num_classes = 1, activation = None) 
