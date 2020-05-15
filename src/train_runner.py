@@ -112,8 +112,8 @@ def train_runner(model: nn.Module, model_name: str, results_dir: str, experiment
     # optimizers and schedulers
     # optimizer = optim.AdamW(model.parameters(), lr=learning_rate)
     optimizer = RAdam(model.parameters(), lr=learning_rate)
-    scheduler = lr_scheduler.MultiStepLR(optimizer, milestones=[20, 40, 60], gamma=0.2)    
-    # scheduler = lr_scheduler.ReduceLROnPlateau(optimizer, patience=2, verbose=True, factor=0.2)
+    #scheduler = lr_scheduler.MultiStepLR(optimizer, milestones=[20, 40, 60], gamma=0.2)    
+    scheduler = lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', patience=2, verbose=True, factor=0.2, min_lr=1e-5)
 
     # criteria
     criterion1 = nn.BCEWithLogitsLoss()                 
@@ -334,8 +334,8 @@ def main():
     arg('--num-workers', type=int, default=2, help='Number of workers for dataloader. Default = 4.')
     arg('--epochs', type=int, default=3, help='Epoch to run')
     arg('--lr', type=float, default=1e-3, help='Initial learning rate')
-    arg('--checkpoint', type=str, default=None, help='Checkpoint filename with initial model weights')
-    arg('--debug', type=bool, default=False)
+    arg('--resume', type=bool, default=False, help='If True resumes training from the checkpoint')
+    arg('--debug', type=bool, default=False, help='If True runs in debug mode')
     arg('--val-oof', type=bool, default=False)
     arg('--train-oof', type=bool, default=False)
     args = parser.parse_args()
@@ -346,8 +346,11 @@ def main():
     model = get_unet(encoder=args.encoder, in_channels = 4, num_classes = 1, activation = None) 
     # load model weights to continue training
     epoch = 0
-    if args.checkpoint is not None and args.checkpoint != '':
-        load_model(model, args.checkpoint)     
+    if args.resume:
+        checkpoints_dir = f'{args.results_dir}/checkpoints/{args.model_name}'
+        checkpoint_filename = f"{args.model_name}_best_val_miou.pth"
+        checkpoint_filepath = os.path.join(checkpoints_dir, checkpoint_filename)
+        load_model(model, checkpoint_filepath)     
         
 
     train_runner(

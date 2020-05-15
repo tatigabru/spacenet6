@@ -10,7 +10,6 @@ import pandas as pd
 import torch
 from torch.utils.data import Dataset
 
-#sys.path.append("C:/Users/Tati/Documents/challenges/spacenet/progs/src")    
 from .transforms import TRANSFORMS
 from .. configs import IMG_SIZE, TRAIN_JSON, TRAIN_META, TRAIN_RGB, TRAIN_MASKS
 
@@ -41,7 +40,6 @@ class RGBADataset(Dataset):
                 one_hot: bool = False,         
                 debug: bool = False,               
                 ):
-
         super(RGBADataset, self).__init__()  # inherit it from torch Dataset
         self.images_dir = images_dir
         self.masks_dir = masks_dir       
@@ -82,8 +80,8 @@ class RGBADataset(Dataset):
         gray = np.expand_dims(gray, axis = 2)         
         # create the image with alpha channel
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB) 
-        image = np.concatenate((image, gray), axis=2)          
-        #print(image.shape)             
+        image = np.concatenate((image, gray), axis=2)      
+        
         # augment
         if self.transforms is not None: 
             augmented = self.transforms(image=image, mask=mask)  
