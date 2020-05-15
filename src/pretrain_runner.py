@@ -114,7 +114,9 @@ def train_runner(model: nn.Module, model_name: str, results_dir: str, experiment
 
     # load model weights to continue training    
     if checkpoint != '':
-        model, optimizer, start_epoch = load_model_optim(model, optimizer, checkpoint)    
+        model, optimizer, start_epoch = load_model_optim(model, optimizer, checkpoint) 
+        model = model.to(device) 
+        start_epoch += 1  
 
     # criteria
     criterion1 = nn.BCEWithLogitsLoss()                 

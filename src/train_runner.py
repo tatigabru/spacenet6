@@ -32,7 +32,7 @@ from .utils.utils import load_model, load_model_optim, set_seed
 
 
 def train_runner(model: nn.Module, model_name: str, results_dir: str, experiment: str = '', debug: bool = False, img_size: int = IMG_SIZE,
-                 learning_rate: float = 1e-2, fold: int = 0, 
+                 learning_rate: float = 1e-2, fold: int = 0, checkpoint: str = '', 
                  epochs: int = 15, batch_size: int = 8, num_workers: int = 4, from_epoch: int = 0,
                  save_oof: bool = False, save_train_oof: bool = False, gpu: int = 0):
     """
@@ -114,28 +114,33 @@ def train_runner(model: nn.Module, model_name: str, results_dir: str, experiment
     #scheduler = lr_scheduler.MultiStepLR(optimizer, milestones=[20, 40, 60], gamma=0.2)    
     scheduler = lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', patience=2, verbose=True, factor=0.2, min_lr=1e-5)
 
+    # load model weights to continue training    
+    if checkpoint != '':
+        model, optimizer, start_epoch = load_model_optim(model, optimizer, checkpoint)
+        model = model.to(device)  
+        start_epoch += 1  
+
     # criteria
     criterion1 = nn.BCEWithLogitsLoss()                 
     criterion = BCEJaccardLoss(bce_weight=1, jaccard_weight=0.5, log_loss=False, log_sigmoid=True)
     #criterion = JaccardLoss(log_sigmoid=True, log_loss=False)
-    #criterion = L.BinaryFocalLoss(alpha=0.25, gamma=2)
-        
+            
     # logging
     #if make_log:
-    report_batch = 20  
+    report_batch = 200  
     report_epoch = 20  
     log_file = os.path.join(checkpoints_dir, f'{experiment}fold_{fold}.log')
     logging.basicConfig(filename=log_file, filemode="w", level=logging.DEBUG)  
     logging.info(f'Parameters:\n model_name: {model_name}\n, results_dir: {results_dir}\n, experiment: {experiment}\n, img_size: {img_size}\n, \
                  learning_rate: {learning_rate}\n, fold: {fold}\n, epochs: {epochs}\n, batch_size: {batch_size}\n, num_workers: {num_workers}\n, \
-                 from_epoch: {from_epoch}\n, save_oof: {save_oof}\n, optimizer: {optimizer}\n')
+                 start_epoch: {start_epoch}\n, save_oof: {save_oof}\n, optimizer: {optimizer}\n, scheduler: {scheduler} \n, checkpoint: {start_epoch} \n')
 
     train_losses, val_losses = [], []
     best_val_loss = 1e+5
     best_val_metric = 0
     # training cycle
     print("Start training")
-    for epoch in range(from_epoch, from_epoch + epochs + 1):
+    for epoch in range(start_epoch, start_epoch + epochs + 1):
         print("Epoch", epoch)
         epoch_losses = []
         progress_bar = tqdm(dataloader_train, total=len(dataloader_train)) 
@@ -144,7 +149,7 @@ def train_runner(model: nn.Module, model_name: str, results_dir: str, experiment
             for batch_num, (img, target, _) in enumerate(progress_bar):
                 img = img.to(device)
                 target = target.float().to(device)
-                prediction = model(img)                
+                prediction = model(img).to(device)                
                 
                 loss = criterion(prediction, target)
                 optimizer.zero_grad()            
@@ -327,6 +332,7 @@ def main():
     arg('--experiment', type=str, default='', help='String name for the experiment saving')
     arg('--encoder', type=str, default='resnet50', help='String model name used for saving')
     arg('--results-dir', type=str, default=RESULTS_DIR, help='Directory for saving model')
+    arg('--checkpoint', type=str, default='', help='Filepath ro checkpoint')
     arg('--data-dir', type=str, default=TRAIN_DIR, help='Directory for saving model')
     arg('--image-size', type=int, default=IMG_SIZE, help='Image size for training')
     arg('--batch-size', type=int, default=4, help='Batch size during training')
@@ -358,6 +364,7 @@ def main():
         model_name=args.model_name,
         results_dir=args.results_dir,
         experiment=args.experiment,
+        checkpoint=checkpoint_filepath,
         debug=args.debug,
         img_size=args.image_size,
         learning_rate=args.lr,
