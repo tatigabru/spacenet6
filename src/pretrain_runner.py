@@ -147,8 +147,8 @@ def train_runner(model: nn.Module, model_name: str, results_dir: str, experiment
         with torch.set_grad_enabled(True): # --> sometimes people write it, idk
             for batch_num, (img, target, _) in enumerate(progress_bar):
                 if torch.cuda.is_available():
-                    img = img.to(device)
-                    target = target.float().to(device)
+                    img = img.cuda()
+                    target = target.float().cuda()
                 prediction = model(img)                
                 
                 loss = criterion(prediction, target)
@@ -261,8 +261,9 @@ def validate_loss(model: nn.Module, dataloader_valid: DataLoader, criterion: L, 
         val_losses = []
         progress_bar = tqdm(dataloader_valid, total=len(dataloader_valid))
         for img, target, _ in progress_bar:
-            img = img.to(device)
-            target = target.float().to(device)            
+            if torch.cuda.is_available():
+                img = img.cuda()
+                target = target.float().cuda()         
             output = model(img)          
             loss = criterion(output, target)
             val_losses.append(loss.detach().cpu().numpy())
