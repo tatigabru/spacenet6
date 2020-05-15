@@ -19,17 +19,16 @@ from tqdm import tqdm
 
 from .configs import *
 # current project imports
-from .datasets.spacenet import SARDataset
+from .datasets.spacenet_rgb import RGBADataset
 from .datasets.transforms import TRANSFORMS
 from .losses.bce_jaccard import BCEJaccardLoss
 from .losses.dice import DiceLoss
 from .losses.jaccard import JaccardLoss
-from .utils.f1_metric import binary_iou, buildings_f1_fast
 from .utils.get_models import get_unet
-from .utils.iou import binary_iou_numpy, binary_iou_pytorch, official_iou
+from .utils.iou import binary_iou_numpy, binary_iou_pytorch
 from .utils.logger import Logger
 from .utils.radam import RAdam
-from .utils.utils import load_model, load_model_optim, set_seed, write_event
+from .utils.utils import load_model, load_model_optim, set_seed
 
 
 def train_runner(model: nn.Module, model_name: str, results_dir: str, experiment: str = '', debug: bool = False, img_size: int = IMG_SIZE,
