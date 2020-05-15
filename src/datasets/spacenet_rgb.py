@@ -36,16 +36,14 @@ class RGBADataset(Dataset):
                 labels_df: pd.DataFrame,           
                 img_size: int = 512,                 
                 transforms: str ='valid', 
-                normalise: bool = True, 
-                one_hot: bool = False,         
+                normalise: bool = True,                        
                 debug: bool = False,               
                 ):
         super(RGBADataset, self).__init__()  # inherit it from torch Dataset
         self.images_dir = images_dir
         self.masks_dir = masks_dir       
         self.debug = debug
-        self.normalise = normalise
-        self.one_hot = one_hot
+        self.normalise = normalise        
         self.img_size = img_size
         self.transforms = transforms
         self.ids = labels_df.ImageId.values        
@@ -96,10 +94,8 @@ class RGBADataset(Dataset):
         image = image.transpose(2,0,1).astype(np.float32) # channels first
         target = mask.astype(np.uint8)  # single channel, int 
         target = np.expand_dims(target, axis=0)
-        print(target.shape)
-        # one-hot encoding
-        if self.one_hot:
-            (target[:, :, None] == np.arange(2)[None, None, :]).astype(np.uint8) 
+        #print(target.shape)
+        
         image = torch.from_numpy(image) 
         target = torch.from_numpy(target)
  

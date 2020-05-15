@@ -110,7 +110,7 @@ def train_runner(model: nn.Module, model_name: str, results_dir: str, experiment
     # optimizer = optim.AdamW(model.parameters(), lr=learning_rate)
     optimizer = RAdam(model.parameters(), lr=learning_rate)
     #scheduler = lr_scheduler.MultiStepLR(optimizer, milestones=[60, 120, 180], gamma=0.2)    
-    scheduler = lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', patience=5, verbose=True, factor=0.2, min_lr=1e-6)
+    scheduler = lr_scheduler.ReduceLROnPlateau(optimizer, mode='max', patience=5, verbose=True, factor=0.2, min_lr=1e-6)
 
     # criteria
     criterion1 = nn.BCEWithLogitsLoss()                 
@@ -178,7 +178,7 @@ def train_runner(model: nn.Module, model_name: str, results_dir: str, experiment
             lr = param_group['lr']
         print(f'learning_rate: {lr}')    
         logging.info(f'learning_rate: {lr}\n')
-        scheduler.step()
+        scheduler.step(val_metric)
         
         # save the best metric
         if valid_metrics['miou'] > best_val_metric:
