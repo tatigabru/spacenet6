@@ -57,10 +57,10 @@ def train_runner(model: nn.Module, model_name: str, results_dir: str, experiment
     print(device)
 
     # creates directories for checkpoints, tensorboard and predicitons
-    checkpoints_dir = f'{results_dir}/rgb/checkpoints/{model_name}'
-    predictions_dir = f'{results_dir}/rgb/oof/{model_name}'
-    tensorboard_dir = f'{results_dir}/rgb/tensorboard/{model_name}'
-    validations_dir = f'{results_dir}/rgb/oof_val/{model_name}'
+    checkpoints_dir = f'{results_dir}/rgb/checkpoints/{model_name}{experiment}'
+    predictions_dir = f'{results_dir}/rgb/oof/{model_name}{experiment}'
+    tensorboard_dir = f'{results_dir}/rgb/tensorboard/{model_name}{experiment}'
+    validations_dir = f'{results_dir}/rgb/oof_val/{model_name}{experiment}'
     os.makedirs(checkpoints_dir, exist_ok=True)
     os.makedirs(predictions_dir, exist_ok=True)
     os.makedirs(tensorboard_dir, exist_ok=True)
@@ -120,9 +120,9 @@ def train_runner(model: nn.Module, model_name: str, results_dir: str, experiment
         
     # logging
     #if make_log:
-    report_batch = 20  
+    report_batch = 200  
     report_epoch = 20  
-    log_file = os.path.join(checkpoints_dir, f'{experiment}fold_{fold}.log')
+    log_file = os.path.join(checkpoints_dir, f'fold_{fold}.log')
     logging.basicConfig(filename=log_file, filemode="w", level=logging.DEBUG)  
     logging.info(f'Parameters:\n model_name: {model_name}\n, results_dir: {results_dir}\n, experiment: {experiment}\n, img_size: {img_size}\n, \
                  learning_rate: {learning_rate}\n, fold: {fold}\n, epochs: {epochs}\n, batch_size: {batch_size}\n, num_workers: {num_workers}\n, \
@@ -185,7 +185,7 @@ def train_runner(model: nn.Module, model_name: str, results_dir: str, experiment
             best_val_metric = valid_metrics['miou']
             # save model, optimizer and losses after every epoch
             print(f"Saving model with the best val metric {valid_metrics['miou']}, epoch {epoch}")
-            checkpoint_filename = "{}_best_val_miou.pth".format(model_name)
+            checkpoint_filename = f"{model_name}_best_val_miou.pth"
             checkpoint_filepath = os.path.join(checkpoints_dir, checkpoint_filename)
             torch.save(
                 {
@@ -267,7 +267,7 @@ def validate_loss(model: nn.Module, dataloader_valid: DataLoader, criterion: L, 
 
 
 def validate(model: nn.Module, dataloader_valid: DataLoader, criterion: L, 
-             epoch: int, predictions_dir: str, save_oof: bool, , device: torch.device):
+             epoch: int, predictions_dir: str, save_oof: bool, device: torch.device):
     """
     Validate model at the epoch end 
        
@@ -332,7 +332,7 @@ def main():
     arg('--resume', type=bool, default=False, help='If True resumes training from the checkpoint')
     arg('--debug', type=bool, default=False, help='If True runs in debug mode')
     arg('--val-oof', type=bool, default=False)
-    arg('--train-oof', type=bool, default=False)
+    arg('--train-oof', type=bool, default=False)   
     arg('--gpu', type=int, default=0, help='Number of the GPU to use: 0, 1')
     args = parser.parse_args()
     print(args)
@@ -343,8 +343,8 @@ def main():
     # load model weights to continue training
     epoch = 0
     if args.resume:
-        checkpoints_dir = f'{args.results_dir}/rgb/checkpoints/{args.model_name}'
-        checkpoint_filename = f"{args.model_name}_best_val_miou.pth"
+        checkpoints_dir = f'{args.results_dir}/rgb/checkpoints/{args.model_name}{args.experiment}'
+        checkpoint_filename = f"{args.model_name}_best_val_miou.pth"        
         checkpoint_filepath = os.path.join(checkpoints_dir, checkpoint_filename)
         load_model(model, checkpoint_filepath)     
         
