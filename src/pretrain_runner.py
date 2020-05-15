@@ -67,8 +67,7 @@ def train_runner(model: nn.Module, model_name: str, results_dir: str, experiment
     os.makedirs(validations_dir, exist_ok=True)
     logger = Logger(tensorboard_dir)
     print('\n', model_name, '\n')
-    model = model.to(device)
-
+    
     # datasets for train and validation
     df = pd.read_csv(f'{TRAIN_DIR}folds.csv')
     df_train = df[df.fold != fold]
@@ -115,9 +114,9 @@ def train_runner(model: nn.Module, model_name: str, results_dir: str, experiment
     # load model weights to continue training    
     if checkpoint != '':
         model, optimizer, start_epoch = load_model_optim(model, optimizer, checkpoint) 
-        model = model.to(device) 
         start_epoch += 1  
 
+    model = model.cuda() 
     # criteria
     criterion1 = nn.BCEWithLogitsLoss()                 
     criterion = BCEJaccardLoss(bce_weight=2, jaccard_weight=0.5, log_loss=False, log_sigmoid=True)
@@ -145,9 +144,9 @@ def train_runner(model: nn.Module, model_name: str, results_dir: str, experiment
         progress_bar.set_description('Epoch {}'.format(epoch))       
         with torch.set_grad_enabled(True): # --> sometimes people write it, idk
             for batch_num, (img, target, _) in enumerate(progress_bar):
-                img = img.to(device)
-                target = target.float().to(device)
-                prediction = model(img).to(device)                
+                img = img.cuda() #to(device)
+                target = target.float().cuda() #to(device)
+                prediction = model(img)                
                 
                 loss = criterion(prediction, target)
                 optimizer.zero_grad()            
@@ -339,11 +338,12 @@ def main():
     arg('--debug', type=bool, default=False, help='If True runs in debug mode')
     arg('--val-oof', type=bool, default=False)
     arg('--train-oof', type=bool, default=False)   
-    arg('--gpu', type=int, default=0, help='Number of the GPU to use: 0, 1')
+    arg('--gpu', type=str, default='0', help='Number of the GPU to use: 0, 1')
     args = parser.parse_args()
     print(args)
     set_seed(seed=1234)
 
+    os.environ["CUDA_VISIBLE_DEVICES"]="1"
     # 1 channel, no activation (use sigmoid later)
     model = get_unet(encoder=args.encoder, in_channels = 4, num_classes = 1, activation = None) 
 
@@ -366,8 +366,7 @@ def main():
         epochs=args.epochs,
         batch_size=args.batch_size,
         num_workers=args.num_workers,        
-        save_oof=True,
-        gpu=args.gpu,        
+        save_oof=True,                
     )
 
 
