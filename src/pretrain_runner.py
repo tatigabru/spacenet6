@@ -360,8 +360,9 @@ def main():
         epochs=args.epochs,
         batch_size=args.batch_size,
         num_workers=args.num_workers,
-        from_epoch = epoch,
+        from_epoch=epoch,
         save_oof=True,
+        gpu=args.gpu,
     )
 
 
