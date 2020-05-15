@@ -145,7 +145,7 @@ def train_runner(model: nn.Module, model_name: str, results_dir: str, experiment
             for batch_num, (img, target, _) in enumerate(progress_bar):
                 img = img.to(device)
                 target = target.float().to(device)
-                prediction = model(img)                
+                prediction = model(img).to(device)                
                 
                 loss = criterion(prediction, target)
                 optimizer.zero_grad()            
