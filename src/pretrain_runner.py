@@ -34,7 +34,7 @@ from .utils.utils import load_model, load_model_optim, set_seed
 def train_runner(model: nn.Module, model_name: str, results_dir: str, experiment: str = '', debug: bool = False, img_size: int = IMG_SIZE,
                  learning_rate: float = 1e-2, fold: int = 0, checkpoint: str = '',
                  epochs: int = 15, batch_size: int = 8, num_workers: int = 4, start_epoch: int = 0,
-                 save_oof: bool = False, save_train_oof: bool = False, gpu: int = 1):
+                 save_oof: bool = False, save_train_oof: bool = False):
     """
     Model training runner
 
@@ -53,7 +53,7 @@ def train_runner(model: nn.Module, model_name: str, results_dir: str, experiment
         from_epoch   : number of epoch to continue training   
         save_oof     : saves oof validation predictions. Default = False 
     """
-    device = torch.device(f'cuda:{gpu}' if torch.cuda.is_available() else 'cpu')
+    device = torch.device(f'cuda:0' if torch.cuda.is_available() else 'cpu')
     print(device)
 
     # creates directories for checkpoints, tensorboard and predicitons
@@ -146,9 +146,8 @@ def train_runner(model: nn.Module, model_name: str, results_dir: str, experiment
         progress_bar.set_description('Epoch {}'.format(epoch))       
         with torch.set_grad_enabled(True): # --> sometimes people write it, idk
             for batch_num, (img, target, _) in enumerate(progress_bar):
-                if torch.cuda.is_available():
-                    img = img.cuda()
-                    target = target.float().cuda()
+                img = img.cuda()
+                target = target.float().cuda()
                 prediction = model(img)                
                 
                 loss = criterion(prediction, target)
@@ -368,8 +367,7 @@ def main():
         epochs=args.epochs,
         batch_size=args.batch_size,
         num_workers=args.num_workers,        
-        save_oof=True,  
-        gpu=args.gpu,              
+        save_oof=True,                 
     )
 
 
