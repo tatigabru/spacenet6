@@ -57,10 +57,10 @@ def train_runner(model: nn.Module, model_name: str, results_dir: str, experiment
     print(device)
 
     # creates directories for checkpoints, tensorboard and predicitons
-    checkpoints_dir = f'{results_dir}/rgb/checkpoints/{model_name}{experiment}'
-    predictions_dir = f'{results_dir}/rgb/oof/{model_name}{experiment}'
-    tensorboard_dir = f'{results_dir}/rgb/tensorboard/{model_name}{experiment}'
-    validations_dir = f'{results_dir}/rgb/oof_val/{model_name}{experiment}'
+    checkpoints_dir = f'{results_dir}rgb/checkpoints/{model_name}{experiment}'
+    predictions_dir = f'{results_dir}rgb/oof/{model_name}{experiment}'
+    tensorboard_dir = f'{results_dir}rgb/tensorboard/{model_name}{experiment}'
+    validations_dir = f'{results_dir}rgb/oof_val/{model_name}{experiment}'
     os.makedirs(checkpoints_dir, exist_ok=True)
     os.makedirs(predictions_dir, exist_ok=True)
     os.makedirs(tensorboard_dir, exist_ok=True)
@@ -343,12 +343,12 @@ def main():
     # load model weights to continue training
     epoch = 0
     if args.resume:
-        checkpoints_dir = f'{args.results_dir}/rgb/checkpoints/{args.model_name}{args.experiment}'
+        checkpoints_dir = f'{args.results_dir}rgb/checkpoints/{args.model_name}'
         checkpoint_filename = f"{args.model_name}_best_val_miou.pth"        
         checkpoint_filepath = os.path.join(checkpoints_dir, checkpoint_filename)
         load_model(model, checkpoint_filepath)     
         
-
+        
     train_runner(
         model=model,
         model_name=args.model_name,
