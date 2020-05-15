@@ -116,7 +116,9 @@ def train_runner(model: nn.Module, model_name: str, results_dir: str, experiment
         model, optimizer, start_epoch = load_model_optim(model, optimizer, checkpoint) 
         start_epoch += 1  
 
-    model = model.to(device) 
+    if torch.cuda.is_available():
+        model.cuda()    
+    #model = model.to(device) 
     # criteria
     criterion1 = nn.BCEWithLogitsLoss()                 
     criterion = BCEJaccardLoss(bce_weight=2, jaccard_weight=0.5, log_loss=False, log_sigmoid=True)
@@ -144,8 +146,9 @@ def train_runner(model: nn.Module, model_name: str, results_dir: str, experiment
         progress_bar.set_description('Epoch {}'.format(epoch))       
         with torch.set_grad_enabled(True): # --> sometimes people write it, idk
             for batch_num, (img, target, _) in enumerate(progress_bar):
-                img = img.to(device)
-                target = target.float().to(device)
+                if torch.cuda.is_available():
+                    img = img.to(device)
+                    target = target.float().to(device)
                 prediction = model(img)                
                 
                 loss = criterion(prediction, target)
