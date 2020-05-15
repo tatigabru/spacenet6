@@ -129,14 +129,14 @@ def train_runner(model: nn.Module, model_name: str, results_dir: str, experiment
     logging.basicConfig(filename=log_file, filemode="w", level=logging.DEBUG)  
     logging.info(f'Parameters:\n model_name: {model_name}\n, results_dir: {results_dir}\n, experiment: {experiment}\n, img_size: {img_size}\n, \
                  learning_rate: {learning_rate}\n, fold: {fold}\n, epochs: {epochs}\n, batch_size: {batch_size}\n, num_workers: {num_workers}\n, \
-                 from_epoch: {from_epoch}\n, save_oof: {save_oof}\n, optimizer: {optimizer}\n')
+                 start_epoch: {start_epoch}\n, save_oof: {save_oof}\n, optimizer: {optimizer}\n, scheduler: {scheduler} \n, checkpoint: {start_epoch} \n')
 
     train_losses, val_losses = [], []
     best_val_loss = 1e+5
     best_val_metric = 0
     # training cycle
     print("Start training")
-    for epoch in range(from_epoch, from_epoch + epochs + 1):
+    for epoch in range(start_epoch, start_epoch + epochs + 1):
         print("Epoch", epoch)
         epoch_losses = []
         progress_bar = tqdm(dataloader_train, total=len(dataloader_train)) 
