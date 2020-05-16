@@ -34,7 +34,7 @@ from .utils.utils import load_model, load_model_optim, set_seed, load_optim
 def train_runner(model: nn.Module, model_name: str, results_dir: str, experiment: str = '', debug: bool = False, img_size: int = IMG_SIZE,
                  learning_rate: float = 1e-2, fold: int = 0, checkpoint: str = '',
                  epochs: int = 15, batch_size: int = 8, num_workers: int = 4, start_epoch: int = 0,
-                 save_oof: bool = False, save_train_oof: bool = False, gpu_number: int = 0):
+                 save_oof: bool = False, save_train_oof: bool = False, gpu_number: int = 1):
     """
     Model training runner
 
@@ -53,14 +53,14 @@ def train_runner(model: nn.Module, model_name: str, results_dir: str, experiment
         from_epoch   : number of epoch to continue training   
         save_oof     : saves oof validation predictions. Default = False 
     """
-    device = torch.device(f'cuda:1' if torch.cuda.is_available() else 'cpu')
+    device = torch.device(f'cuda:{gpu_number}' if torch.cuda.is_available() else 'cpu')
     print(device)
 
     # load model weights to continue training    
     if checkpoint != '':
         model, start_epoch = load_model(model, checkpoint) 
         start_epoch += 1
-    model.cuda(1)
+    model.cuda(gpu_number)
 
     # creates directories for checkpoints, tensorboard and predicitons
     checkpoints_dir = f'{results_dir}rgb/checkpoints/{model_name}{experiment}'
@@ -112,11 +112,9 @@ def train_runner(model: nn.Module, model_name: str, results_dir: str, experiment
     print('{} training images, {} validation images'.format(len(train_dataset), len(valid_dataset)))
 
     # optimizers and schedulers
-    optimizer = AdamW(model.parameters(), lr=learning_rate)
-    #optimizer = RAdam(model.parameters(), lr=learning_rate)
-    #scheduler = lr_scheduler.MultiStepLR(optimizer, milestones=[60, 120, 180], gamma=0.2)    
+    #optimizer = AdamW(model.parameters(), lr=learning_rate)
+    optimizer = RAdam(model.parameters(), lr=learning_rate)    
     scheduler = lr_scheduler.ReduceLROnPlateau(optimizer, mode='max', patience=5, verbose=True, factor=0.2, min_lr=1e-6)
-
     # load optimizer state continue training    
     if checkpoint != '':
         optimizer = load_optim(optimizer, checkpoint, device)          
@@ -148,8 +146,8 @@ def train_runner(model: nn.Module, model_name: str, results_dir: str, experiment
         progress_bar.set_description('Epoch {}'.format(epoch))       
         with torch.set_grad_enabled(True): # --> sometimes people write it, idk
             for batch_num, (img, target, _) in enumerate(progress_bar):
-                img = img.cuda(1) #to(device)
-                target = target.float().cuda(1) #to(device)
+                img = img.to(device)
+                target = target.float().to(device)
                 prediction = model(img)                
                 
                 loss = criterion(prediction, target)
@@ -263,8 +261,8 @@ def validate_loss(model: nn.Module, dataloader_valid: DataLoader, criterion: L, 
         progress_bar = tqdm(dataloader_valid, total=len(dataloader_valid))
         for img, target, _ in progress_bar:
             if torch.cuda.is_available():
-                img = img.cuda(1)
-                target = target.float().cuda(1)         
+                img = img.to(device)
+                target = target.float().to(device)      
             output = model(img)          
             loss = criterion(output, target)
             val_losses.append(loss.detach().cpu().numpy())
@@ -296,8 +294,8 @@ def validate(model: nn.Module, dataloader_valid: DataLoader, criterion: L,
         progress_bar = tqdm(dataloader_valid, total=len(dataloader_valid))
         
         for batch_num, (img, target, tile_ids) in enumerate(progress_bar):  # iterate over batches
-            img = img.cuda(1)
-            target = target.float().cuda(1)
+            img = img.to(device)
+            target = target.float().to(device)
             output = model(img) 
             loss = criterion(output, target)
             val_losses.append(loss.detach().cpu().numpy())         
@@ -370,7 +368,8 @@ def main():
         epochs=args.epochs,
         batch_size=args.batch_size,
         num_workers=args.num_workers,        
-        save_oof=True,                 
+        save_oof=True,   
+        gpu_number=1,              
     )
 
 
