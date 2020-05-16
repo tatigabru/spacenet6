@@ -34,7 +34,7 @@ from .utils.utils import load_model, load_model_optim, set_seed, load_optim
 def train_runner(model: nn.Module, model_name: str, results_dir: str, experiment: str = '', debug: bool = False, img_size: int = IMG_SIZE,
                  learning_rate: float = 1e-2, fold: int = 0, checkpoint: str = '',
                  epochs: int = 15, batch_size: int = 8, num_workers: int = 4, start_epoch: int = 0,
-                 save_oof: bool = False, save_train_oof: bool = False):
+                 save_oof: bool = False, save_train_oof: bool = False, gpu_number: int = 0):
     """
     Model training runner
 
@@ -58,7 +58,7 @@ def train_runner(model: nn.Module, model_name: str, results_dir: str, experiment
 
     # load model weights to continue training    
     if checkpoint != '':
-        model, start_epoch = load_model(model, optimizer) 
+        model, start_epoch = load_model(model, checkpoint) 
         start_epoch += 1
     model.cuda(1)
 
