@@ -28,7 +28,7 @@ from .utils.get_models import get_unet
 from .utils.iou import binary_iou_numpy, binary_iou_pytorch
 from .utils.logger import Logger
 from .utils.radam import RAdam
-from .utils.utils import load_model, load_model_optim, set_seed, load_optim
+from .utils.utils import load_model, set_seed, load_optim
 
 
 def train_runner(model: nn.Module, model_name: str, results_dir: str, experiment: str = '', debug: bool = False, img_size: int = IMG_SIZE,
