@@ -24,12 +24,13 @@ def load_model_optim(model: nn.Module, optimizer: torch.optim, checkpoint_path: 
     checkpoint = torch.load(checkpoint_path)
     model.load_state_dict(checkpoint['model'])
     epoch = checkpoint['epoch']+1
-    model.cuda()
+    model.cuda(1)
+
     optimizer.load_state_dict(checkpoint['optimizer'])
     for state in optimizer.state.values():
         for k, v in state.items():
             if torch.is_tensor(v):
-                state[k] = v.cuda()    
+                state[k] = v.cuda(1)    
     for param_group in optimizer.param_groups:
         print('learning_rate:', param_group['lr'])
     print('Loaded model from {}, epoch {}'.format(checkpoint_path, epoch))
@@ -38,6 +39,23 @@ def load_model_optim(model: nn.Module, optimizer: torch.optim, checkpoint_path: 
     print('Validation miou {}, Validation loss {}'.format(metric, val_loss))
 
     return model, optimizer, epoch
+
+
+def load_optim(optimizer: torch.optim, checkpoint_path: str, device: torch.device):
+    """Loads optimizer, epoch, to continuer training
+    """  
+    checkpoint = torch.load(checkpoint_path)    
+    optimizer.load_state_dict(checkpoint['optimizer'])
+    for state in optimizer.state.values():
+        for k, v in state.items():
+            if torch.is_tensor(v):
+                state[k] = v.cuda(1) #.to(device)    
+    for param_group in optimizer.param_groups:
+        print('learning_rate: {}'.format(param_group['lr']))    
+    print('Loaded optimizer state from {}'.format(checkpoint_path))    
+    print('Optimizer {}'.format(optimizer))
+
+    return optimizer
 
 
 def load_model(model: nn.Module, checkpoint_path: str):

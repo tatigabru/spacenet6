@@ -13,7 +13,7 @@ import torch.nn.functional as F
 import torch.utils.data
 from pytorch_toolbelt import losses as L
 from torch import nn
-from torch.optim import lr_scheduler
+from torch.optim import lr_scheduler, AdamW, Adam
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
@@ -28,7 +28,7 @@ from .utils.get_models import get_unet
 from .utils.iou import binary_iou_numpy, binary_iou_pytorch
 from .utils.logger import Logger
 from .utils.radam import RAdam
-from .utils.utils import load_model, load_model_optim, set_seed
+from .utils.utils import load_model, load_model_optim, set_seed, load_optim
 
 
 def train_runner(model: nn.Module, model_name: str, results_dir: str, experiment: str = '', debug: bool = False, img_size: int = IMG_SIZE,
@@ -55,6 +55,12 @@ def train_runner(model: nn.Module, model_name: str, results_dir: str, experiment
     """
     device = torch.device(f'cuda:1' if torch.cuda.is_available() else 'cpu')
     print(device)
+
+    # load model weights to continue training    
+    if checkpoint != '':
+        model, start_epoch = load_model(model, optimizer) 
+        start_epoch += 1
+    model.cuda(1)
 
     # creates directories for checkpoints, tensorboard and predicitons
     checkpoints_dir = f'{results_dir}rgb/checkpoints/{model_name}{experiment}'
@@ -106,19 +112,15 @@ def train_runner(model: nn.Module, model_name: str, results_dir: str, experiment
     print('{} training images, {} validation images'.format(len(train_dataset), len(valid_dataset)))
 
     # optimizers and schedulers
-    # optimizer = optim.AdamW(model.parameters(), lr=learning_rate)
-    optimizer = RAdam(model.parameters(), lr=learning_rate)
+    optimizer = AdamW(model.parameters(), lr=learning_rate)
+    #optimizer = RAdam(model.parameters(), lr=learning_rate)
     #scheduler = lr_scheduler.MultiStepLR(optimizer, milestones=[60, 120, 180], gamma=0.2)    
     scheduler = lr_scheduler.ReduceLROnPlateau(optimizer, mode='max', patience=5, verbose=True, factor=0.2, min_lr=1e-6)
 
-    # load model weights to continue training    
+    # load optimizer state continue training    
     if checkpoint != '':
-        model, optimizer, start_epoch = load_model_optim(model, optimizer, checkpoint) 
-        start_epoch += 1  
+        optimizer = load_optim(optimizer, checkpoint)          
 
-    #if torch.cuda.is_available():
-    #    model.cuda()    
-    model = model.to(device) 
     # criteria
     criterion1 = nn.BCEWithLogitsLoss()                 
     criterion = BCEJaccardLoss(bce_weight=2, jaccard_weight=0.5, log_loss=False, log_sigmoid=True)
@@ -146,8 +148,8 @@ def train_runner(model: nn.Module, model_name: str, results_dir: str, experiment
         progress_bar.set_description('Epoch {}'.format(epoch))       
         with torch.set_grad_enabled(True): # --> sometimes people write it, idk
             for batch_num, (img, target, _) in enumerate(progress_bar):
-                img = img.to(device)
-                target = target.float().to(device)
+                img = img.cuda(1) #to(device)
+                target = target.float().cuda(1) #to(device)
                 prediction = model(img)                
                 
                 loss = criterion(prediction, target)
@@ -261,8 +263,8 @@ def validate_loss(model: nn.Module, dataloader_valid: DataLoader, criterion: L, 
         progress_bar = tqdm(dataloader_valid, total=len(dataloader_valid))
         for img, target, _ in progress_bar:
             if torch.cuda.is_available():
-                img = img.cuda()
-                target = target.float().cuda()         
+                img = img.cuda(1)
+                target = target.float().cuda(1)         
             output = model(img)          
             loss = criterion(output, target)
             val_losses.append(loss.detach().cpu().numpy())
@@ -294,8 +296,8 @@ def validate(model: nn.Module, dataloader_valid: DataLoader, criterion: L,
         progress_bar = tqdm(dataloader_valid, total=len(dataloader_valid))
         
         for batch_num, (img, target, tile_ids) in enumerate(progress_bar):  # iterate over batches
-            img = img.cuda()
-            target = target.float().cuda()
+            img = img.cuda(1)
+            target = target.float().cuda(1)
             output = model(img) 
             loss = criterion(output, target)
             val_losses.append(loss.detach().cpu().numpy())         
@@ -345,7 +347,7 @@ def main():
     set_seed(seed=1234)
 
     os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"
-    os.environ["CUDA_VISIBLE_DEVICES"]='1'
+    os.environ["CUDA_VISIBLE_DEVICES"]= str(args.gpu)
     # 1 channel, no activation (use sigmoid later)
     model = get_unet(encoder=args.encoder, in_channels = 4, num_classes = 1, activation = None) 
 
@@ -353,7 +355,7 @@ def main():
     if args.resume:
         checkpoints_dir = f'{args.results_dir}rgb/checkpoints/{args.model_name}'
         checkpoint_filename = f"{args.model_name}_best_val_miou.pth"        
-        checkpoint_filepath = os.path.join(checkpoints_dir, checkpoint_filename)
+        args.checkpoint = os.path.join(checkpoints_dir, checkpoint_filename)
 
         
     train_runner(
@@ -361,7 +363,7 @@ def main():
         model_name=args.model_name,
         results_dir=args.results_dir,
         experiment=args.experiment,
-        checkpoint=checkpoint_filepath,
+        checkpoint=args.checkpoint,
         debug=args.debug,
         img_size=args.image_size,
         learning_rate=args.lr,
