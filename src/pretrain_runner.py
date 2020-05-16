@@ -119,7 +119,7 @@ def train_runner(model: nn.Module, model_name: str, results_dir: str, experiment
 
     # load optimizer state continue training    
     if checkpoint != '':
-        optimizer = load_optim(optimizer, checkpoint)          
+        optimizer = load_optim(optimizer, checkpoint, device)          
 
     # criteria
     criterion1 = nn.BCEWithLogitsLoss()                 
