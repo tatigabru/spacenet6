@@ -116,8 +116,8 @@ def train_runner(model: nn.Module, model_name: str, results_dir: str, experiment
     optimizer = RAdam(model.parameters(), lr=learning_rate)    
     scheduler = lr_scheduler.ReduceLROnPlateau(optimizer, mode='max', patience=5, verbose=True, factor=0.2, min_lr=1e-6)
     # load optimizer state continue training    
-    if checkpoint != '':
-        optimizer = load_optim(optimizer, checkpoint, device)          
+    #if checkpoint != '':
+    #    optimizer = load_optim(optimizer, checkpoint, device)          
 
     # criteria
     criterion1 = nn.BCEWithLogitsLoss()                 
