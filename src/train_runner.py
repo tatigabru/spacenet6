@@ -13,7 +13,7 @@ import torch.nn.functional as F
 import torch.utils.data
 from pytorch_toolbelt import losses as L
 from torch import nn
-from torch.optim import lr_scheduler
+from torch.optim import lr_scheduler, AdamW
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
@@ -28,13 +28,13 @@ from .utils.get_models import get_unet
 from .utils.iou import binary_iou_numpy, binary_iou_pytorch
 from .utils.logger import Logger
 from .utils.radam import RAdam
-from .utils.utils import load_model, load_model_optim, set_seed
+from .utils.utils import load_model, set_seed, load_optim
 
 
 def train_runner(model: nn.Module, model_name: str, results_dir: str, experiment: str = '', debug: bool = False, img_size: int = IMG_SIZE,
                  learning_rate: float = 1e-2, fold: int = 0, checkpoint: str = '', 
                  epochs: int = 15, batch_size: int = 8, num_workers: int = 4, from_epoch: int = 0,
-                 save_oof: bool = False, save_train_oof: bool = False, gpu: int = 0):
+                 save_oof: bool = False, save_train_oof: bool = False, gpu_number: int = 0):
     """
     Model training runner
 
@@ -53,8 +53,14 @@ def train_runner(model: nn.Module, model_name: str, results_dir: str, experiment
         from_epoch   : number of epoch to continue training   
         save_oof     : saves oof validation predictions. Default = False 
     """
-    device = torch.device(f'cuda:{gpu}' if torch.cuda.is_available() else 'cpu')
+    device = torch.device(f'cuda:{gpu_number}' if torch.cuda.is_available() else 'cpu')
     print(device)
+
+    # load model weights to continue training    
+    if checkpoint != '':
+        model, start_epoch = load_model(model, checkpoint) 
+        start_epoch += 1
+    model.to(device)
 
     # creates directories for checkpoints, tensorboard and predicitons
     checkpoints_dir = f'{results_dir}/checkpoints/{model_name}'
@@ -109,20 +115,16 @@ def train_runner(model: nn.Module, model_name: str, results_dir: str, experiment
     print('{} training images, {} validation images'.format(len(train_dataset), len(valid_dataset)))
 
     # optimizers and schedulers
-    # optimizer = optim.AdamW(model.parameters(), lr=learning_rate)
-    optimizer = RAdam(model.parameters(), lr=learning_rate)
-    #scheduler = lr_scheduler.MultiStepLR(optimizer, milestones=[20, 40, 60], gamma=0.2)    
-    scheduler = lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', patience=2, verbose=True, factor=0.2, min_lr=1e-5)
-
-    # load model weights to continue training    
-    if checkpoint != '':
-        model, optimizer, start_epoch = load_model_optim(model, optimizer, checkpoint)
-        model = model.to(device)  
-        start_epoch += 1  
+    # optimizer = AdamW(model.parameters(), lr=learning_rate)
+    optimizer = RAdam(model.parameters(), lr=learning_rate)    
+    scheduler = lr_scheduler.ReduceLROnPlateau(optimizer, mode='max', patience=3, verbose=True, factor=0.2, min_lr=1e-6)
+    # load optimizer state continue training    
+    #if checkpoint != '':
+    #    optimizer = load_optim(optimizer, checkpoint, device)
 
     # criteria
     criterion1 = nn.BCEWithLogitsLoss()                 
-    criterion = BCEJaccardLoss(bce_weight=1, jaccard_weight=0.5, log_loss=False, log_sigmoid=True)
+    criterion = BCEJaccardLoss(bce_weight=2, jaccard_weight=0.5, log_loss=False, log_sigmoid=True)
     #criterion = JaccardLoss(log_sigmoid=True, log_loss=False)
             
     # logging
@@ -185,7 +187,7 @@ def train_runner(model: nn.Module, model_name: str, results_dir: str, experiment
             lr = param_group['lr']
         print(f'learning_rate: {lr}')    
         logging.info(f'learning_rate: {lr}\n')
-        scheduler.step()
+        scheduler.step(val_metric)
         
         # save the best metric
         if valid_metrics['miou'] > best_val_metric:
@@ -256,8 +258,6 @@ def validate_loss(model: nn.Module, dataloader_valid: DataLoader, criterion: L, 
     Output:
         loss_valid: total validation loss, history 
     """
-    #device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
-
     with torch.no_grad():
         model.eval()
         val_losses = []
@@ -371,9 +371,8 @@ def main():
         epochs=args.epochs,
         batch_size=args.batch_size,
         num_workers=args.num_workers,
-        from_epoch = epoch,
         save_oof=True,
-        gpu=args.gpu,
+        gpu_number=0,
     )
 
 

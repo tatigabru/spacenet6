@@ -60,7 +60,7 @@ def train_runner(model: nn.Module, model_name: str, results_dir: str, experiment
     if checkpoint != '':
         model, start_epoch = load_model(model, checkpoint) 
         start_epoch += 1
-    model.cuda(gpu_number)
+    model.to(device)
 
     # creates directories for checkpoints, tensorboard and predicitons
     checkpoints_dir = f'{results_dir}rgb/checkpoints/{model_name}{experiment}'
