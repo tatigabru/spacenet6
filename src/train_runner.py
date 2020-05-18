@@ -134,7 +134,7 @@ def train_runner(model: nn.Module, model_name: str, results_dir: str, experiment
             
     # logging
     #if make_log:
-    report_batch = 200  
+    report_batch = 20  
     report_epoch = 20  
     log_file = os.path.join(checkpoints_dir, f'{experiment}fold_{fold}.log')
     logging.basicConfig(filename=log_file, filemode="w", level=logging.DEBUG)  
@@ -143,8 +143,8 @@ def train_runner(model: nn.Module, model_name: str, results_dir: str, experiment
                  start_epoch: {start_epoch}\n, save_oof: {save_oof}\n, optimizer: {optimizer}\n, scheduler: {scheduler} \n, checkpoint: {start_epoch} \n')
 
     train_losses, val_losses = [], []
-    if not best_val_loss: best_val_loss = 1e+5
-    if not best_val_loss: best_val_metric = 0
+    best_val_loss = 1e+5
+    best_val_metric = 0
     # training cycle
     print("Start training")
     for epoch in range(start_epoch, start_epoch + epochs + 1):
@@ -172,8 +172,10 @@ def train_runner(model: nn.Module, model_name: str, results_dir: str, experiment
                         learning_rate = param_group['lr']
                     print(f'current learning_rate: {learning_rate}')   
 
-                if batch_num and batch_num % report_batch == 0:                
-                    logging.info(f'epoch: {epoch}; step: {batch_num}; loss: {np.mean(epoch_losses)} \n')
+                if batch_num and batch_num % report_batch == 0:     
+                    for param_group in optimizer.param_groups:            
+                        learning_rate = param_group['lr']                         
+                    logging.info(f'epoch: {epoch}; step: {batch_num}; learning_rate: {learning_rate}; loss: {np.mean(epoch_losses)} \n')
                 
         # log loss history
         print("Epoch {}, Train Loss: {}".format(epoch, np.mean(epoch_losses)))
