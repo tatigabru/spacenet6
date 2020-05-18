@@ -164,7 +164,7 @@ def train_runner(model: nn.Module, model_name: str, results_dir: str, experiment
                 epoch_losses.append(loss.detach().cpu().numpy())
 
                 # cyclic LR
-                scheduler_cyclic.step()
+                #scheduler_cyclic.step()
                 if debug:
                     # get current learning rate
                     for param_group in optimizer.param_groups:            
@@ -199,7 +199,8 @@ def train_runner(model: nn.Module, model_name: str, results_dir: str, experiment
         print(f'learning_rate: {learning_rate}')    
         logging.info(f'learning_rate: {learning_rate}\n')
         scheduler.step(val_metric)
-        
+        scheduler_cos.step()
+
         # save the best metric
         if valid_metrics['miou'] > best_val_metric:
             best_val_metric = valid_metrics['miou']
