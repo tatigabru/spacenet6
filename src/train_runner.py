@@ -118,9 +118,8 @@ def train_runner(model: nn.Module, model_name: str, results_dir: str, experiment
     # optimizer = AdamW(model.parameters(), lr=learning_rate)
     optimizer = RAdam(model.parameters(), lr=learning_rate)    
     scheduler = lr_scheduler.ReduceLROnPlateau(optimizer, mode='max', patience=3, verbose=True, factor=0.2, min_lr=1e-7)
-    batches = len(train_dataset)//batch_size
-    scheduler_cos = lr_scheduler.CosineAnnealingLR(optimizer, T_max=2*batches, eta_min=1e-6, last_epoch=-1)
-    scheduler_cyclic = lr_scheduler.CyclicLR(optimizer, base_lr=1e-6, max_lr=learning_rate, step_size_up=2*batches, step_size_down=batches, mode='triangular')
+    num_batches = len(train_dataset)//batch_size
+    scheduler_cos = lr_scheduler.CosineAnnealingLR(optimizer, T_max=num_batches, eta_min=1e-6, last_epoch=-1)    
     # load optimizer state continue training    
     #if checkpoint != '':
     #    optimizer = load_optim(optimizer, checkpoint, device)
@@ -162,9 +161,7 @@ def train_runner(model: nn.Module, model_name: str, results_dir: str, experiment
                 torch.nn.utils.clip_grad_norm_(model.parameters(), 2)
                 optimizer.step()
                 epoch_losses.append(loss.detach().cpu().numpy())
-
-                # cyclic LR
-                #scheduler_cyclic.step()
+                
                 if debug:
                     # get current learning rate
                     for param_group in optimizer.param_groups:            
