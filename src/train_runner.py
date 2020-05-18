@@ -121,7 +121,7 @@ def train_runner(model: nn.Module, model_name: str, results_dir: str, experiment
     # optimizer = AdamW(model.parameters(), lr=learning_rate)
     optimizer = RAdam(model.parameters(), lr=learning_rate)    
     scheduler = lr_scheduler.ReduceLROnPlateau(optimizer, mode='max', patience=3, verbose=True, factor=0.2, min_lr=1e-7)
-    num_batches = len(train_dataset)//batch_size
+    num_batches = len(train_dataset)//batch_size + 1
     scheduler_cos = lr_scheduler.CosineAnnealingLR(optimizer, T_max=num_batches, eta_min=1e-6, last_epoch=-1)    
     # load optimizer state continue training    
     #if checkpoint != '':
