@@ -58,8 +58,11 @@ def train_runner(model: nn.Module, model_name: str, results_dir: str, experiment
 
     # load model weights to continue training    
     if checkpoint != '':
-        model, start_epoch = load_model(model, checkpoint) 
-        start_epoch += 1
+        model, ckpt = load_model(model, checkpoint) 
+        best_val_metric = ckpt['valid_miou']
+        best_val_loss = ckpt['valid_loss']
+        start_epoch = ckpt['epoch']+1
+        print('Loaded model from {}, epoch {}'.format(checkpoint, epoch))
     model.to(device)
 
     # creates directories for checkpoints, tensorboard and predicitons
@@ -140,8 +143,8 @@ def train_runner(model: nn.Module, model_name: str, results_dir: str, experiment
                  start_epoch: {start_epoch}\n, save_oof: {save_oof}\n, optimizer: {optimizer}\n, scheduler: {scheduler} \n, checkpoint: {start_epoch} \n')
 
     train_losses, val_losses = [], []
-    best_val_loss = 1e+5
-    best_val_metric = 0
+    if not best_val_loss: best_val_loss = 1e+5
+    if not best_val_loss: best_val_metric = 0
     # training cycle
     print("Start training")
     for epoch in range(start_epoch, start_epoch + epochs + 1):
@@ -161,7 +164,7 @@ def train_runner(model: nn.Module, model_name: str, results_dir: str, experiment
                 torch.nn.utils.clip_grad_norm_(model.parameters(), 2)
                 optimizer.step()
                 epoch_losses.append(loss.detach().cpu().numpy())
-                
+
                 scheduler_cos.step()
                 if debug:
                     # get current learning rate

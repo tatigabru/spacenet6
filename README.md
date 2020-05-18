@@ -59,11 +59,13 @@ python -m src.pretrain_runner --model-name "unet_se_resnext101_32x4d" --encoder 
 python -m src.train_runner --model-name "unet_se_resnext101_32x4d" --encoder "se_resnext101_32x4d" --debug True --image-size 224 --epochs 2 --lr 1e-3 --batch-size 16 --num-workers 2 
 
 ## Pretrain the model on RGB + grayscale images
-python -m src.pretrain_runner --model-name "unet_se_resnext101_32x4d" --encoder "se_resnext101_32x4d" --image-size 512 --epochs 200 --lr 1e-3 --batch-size 8 --num-workers 4
+nuhop python -m src.pretrain_runner --model-name "unet_se_resnext101_32x4d" --encoder "se_resnext101_32x4d" --image-size 512 --epochs 200 --lr 1e-3 --batch-size 6 --num-workers 4 & 
+tail -f nohup.out
 
 ## Train the model on SAR data
 You may use the model pretrained on RGB + grayscale images; set the --checkpoint argument
-python -m src.train_runner --model-name "unet_se_resnext101_32x4d" --encoder "se_resnext101_32x4d" --image-size 512 --checkpoint = '<pretrained_rgb_model>' --epochs 200 --lr 1e-3 --batch-size 8 --num-workers 4
+nohup python -m src.train_runner --model-name "unet_se_resnext101_32x4d" --encoder "se_resnext101_32x4d" --image-size 512 --checkpoint = '<pretrained_rgb_model>' --epochs 200 --lr 1e-3 --batch-size 6 --num-workers 4 & > nopup2.out 
+tail -f nohup.out
 
 ## Run inference on the validation set
 python -m src.predict --action predict_val
