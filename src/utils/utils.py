@@ -19,7 +19,15 @@ def set_seed(seed: int=1234):
 
 
 def load_optim(optimizer: torch.optim, checkpoint_path: str, device: torch.device):
-    """Loads optimizer, epoch, to continuer training
+    """
+    Load optimizer to continuer training
+
+        Args:
+            optimizer: initialized optimizer
+            checkpoint_path: path to the checkpoint
+            device: device to send optimizer to (must be the same as in the model)
+            
+        Note: must be called after initializing the model    
     """  
     checkpoint = torch.load(checkpoint_path)    
     optimizer.load_state_dict(checkpoint['optimizer'])
@@ -27,24 +35,43 @@ def load_optim(optimizer: torch.optim, checkpoint_path: str, device: torch.devic
         for k, v in state.items():
             if torch.is_tensor(v):
                 state[k] = v.to(device)    
+
     for param_group in optimizer.param_groups:
         print('learning_rate: {}'.format(param_group['lr']))    
-    print('Loaded optimizer state from {}'.format(checkpoint_path))    
-    print('Optimizer {}'.format(optimizer))
 
+    print('Loaded optimizer {} state from {}'.format(optimizer, checkpoint_path))    
+    
     return optimizer
 
 
-def load_model(model: nn.Module, checkpoint_path: str):
-    """Loads model weigths, epoch to continuer training
+def save_ckpt(model: nn.Module, optimizer: torch.optim, checkpoint_path: str) -> dict:
+    """
+    Save model and optimizer checkpoint to continuer training
+    """  
+    torch.save({
+                'model': model.state_dict(),
+                'optimizer': optimizer.state_dict(),
+                },
+                checkpoint_path
+            )
+    print("Saved model and optimizer state to {}".format(checkpoint_path))
+
+def load_ckpt(checkpoint_path: str) -> dict:
+    """
+    Load checkpoint to continuer training
+    """  
+    checkpoint = torch.load(checkpoint_path)
+        
+    return checkpoint
+
+
+def load_model(model: nn.Module, checkpoint_path: str) -> tuple:
+    """Loads model weigths to continuer training
     """  
     checkpoint = torch.load(checkpoint_path)
     model.load_state_dict(checkpoint['model'])
-    epoch = checkpoint['epoch']+1
-    moiu = checkpoint['epoch']
-    print('Loaded model from {}, epoch {}'.format(checkpoint_path, epoch))
-
-    return model, epoch
+    
+    return model, checkpoint
  
  
 def write_event(log, step, **data):
@@ -61,10 +88,10 @@ def write_event(log, step, **data):
 
 def check_crop_size(image: np.array) -> bool:
     """Checks if image size divisible by 32
-    Args:
-        image: imput image/mask as a np.array        
-    Returns:
-        True if both height and width divisible by 32 and False otherwise.
+        Args:
+            image: imput image/mask as a np.array        
+        Returns:
+            True if both height and width divisible by 32 and False otherwise.
     """
     image_height, image_width = image.shape[:2]
     return image_height % 32 == 0 and image_width % 32 == 0

@@ -58,8 +58,12 @@ def train_runner(model: nn.Module, model_name: str, results_dir: str, experiment
 
     # load model weights to continue training    
     if checkpoint != '':
-        model, start_epoch = load_model(model, checkpoint) 
-        start_epoch += 1
+        model, ckpt = load_model(model, checkpoint) 
+        moiu = ckpt['valid_miou']
+        loss = ckpt['valid_loss']
+        start_epoch = ckpt['epoch']+1
+        print('Loaded model from {}, epoch {}'.format(checkpoint, epoch))
+    
     model.to(device)
 
     # creates directories for checkpoints, tensorboard and predicitons
