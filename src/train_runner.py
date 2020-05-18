@@ -62,7 +62,7 @@ def train_runner(model: nn.Module, model_name: str, results_dir: str, experiment
         best_val_metric = ckpt['valid_miou']
         best_val_loss = ckpt['valid_loss']
         start_epoch = ckpt['epoch']+1
-        print('Loaded model from {}, epoch {}'.format(checkpoint, epoch))
+        print('Loaded model from {}, epoch {}'.format(checkpoint, start_epoch-1))
     model.to(device)
 
     # creates directories for checkpoints, tensorboard and predicitons
