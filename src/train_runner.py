@@ -34,7 +34,7 @@ from .utils.utils import load_model, set_seed, load_optim
 def train_runner(model: nn.Module, model_name: str, results_dir: str, experiment: str = '', debug: bool = False, img_size: int = IMG_SIZE,
                  learning_rate: float = 1e-2, fold: int = 0, checkpoint: str = '', 
                  epochs: int = 15, batch_size: int = 8, num_workers: int = 4, from_epoch: int = 0,
-                 save_oof: bool = False, save_train_oof: bool = False, gpu_number: int = 0):
+                 save_oof: bool = False, save_train_oof: bool = False, gpu_number: int = 1):
     """
     Model training runner
 
@@ -117,7 +117,10 @@ def train_runner(model: nn.Module, model_name: str, results_dir: str, experiment
     # optimizers and schedulers
     # optimizer = AdamW(model.parameters(), lr=learning_rate)
     optimizer = RAdam(model.parameters(), lr=learning_rate)    
-    scheduler = lr_scheduler.ReduceLROnPlateau(optimizer, mode='max', patience=3, verbose=True, factor=0.2, min_lr=1e-6)
+    scheduler = lr_scheduler.ReduceLROnPlateau(optimizer, mode='max', patience=3, verbose=True, factor=0.2, min_lr=1e-7)
+    batches = len(train_dataset)//batch_size
+    scheduler_cos = lr_scheduler.CosineAnnealingLR(optimizer, T_max=2*batches, eta_min=1e-6, last_epoch=-1)
+    scheduler_cyclic = lr_scheduler.CyclicLR(optimizer, base_lr=1e-6, max_lr=learning_rate, step_size_up=2*batches, step_size_down=batches, mode='triangular')
     # load optimizer state continue training    
     #if checkpoint != '':
     #    optimizer = load_optim(optimizer, checkpoint, device)
@@ -160,6 +163,14 @@ def train_runner(model: nn.Module, model_name: str, results_dir: str, experiment
                 optimizer.step()
                 epoch_losses.append(loss.detach().cpu().numpy())
 
+                # cyclic LR
+                scheduler_cyclic.step()
+                if debug:
+                    # get current learning rate
+                    for param_group in optimizer.param_groups:            
+                        learning_rate = param_group['lr']
+                    print(f'current learning_rate: {learning_rate}')   
+
                 if batch_num and batch_num % report_batch == 0:                
                     logging.info(f'epoch: {epoch}; step: {batch_num}; loss: {np.mean(epoch_losses)} \n')
                 
@@ -184,9 +195,9 @@ def train_runner(model: nn.Module, model_name: str, results_dir: str, experiment
         
         # get current learning rate
         for param_group in optimizer.param_groups:            
-            lr = param_group['lr']
-        print(f'learning_rate: {lr}')    
-        logging.info(f'learning_rate: {lr}\n')
+            learning_rate = param_group['lr']
+        print(f'learning_rate: {learning_rate}')    
+        logging.info(f'learning_rate: {learning_rate}\n')
         scheduler.step(val_metric)
         
         # save the best metric
@@ -240,7 +251,11 @@ def train_runner(model: nn.Module, model_name: str, results_dir: str, experiment
                     'valid_miou': valid_metrics['miou'],
                 },
                 checkpoint_filepath
-            )    
+            ) 
+        # Early stopping     
+        if learning_rate == 1e-7:
+            print(f"Stop trainig, reached minimal LR: {learning_rate} at epoch {epoch}")  
+            break    
 
 
 def validate_loss(model: nn.Module, dataloader_valid: DataLoader, criterion: L, epoch: int,
@@ -290,8 +305,6 @@ def validate(model: nn.Module, dataloader_valid: DataLoader, criterion: L,
     Output:
         metrics: dictionary with validation metrics 
     """
-    #device = torch.device(f'cuda:{gpu}' if torch.cuda.is_available() else 'cpu')
-
     with torch.no_grad():
         model.eval()      
         ious, val_losses = [], []        
@@ -343,7 +356,7 @@ def main():
     arg('--debug', type=bool, default=False, help='If True runs in debug mode')
     arg('--val-oof', type=bool, default=False)
     arg('--train-oof', type=bool, default=False)
-    arg('--gpu', type=int, default=0, help='Number of the GPU to use: 0, 1')
+    arg('--gpu', type=int, default=1, help='Number of the GPU to use: 0, 1')
     args = parser.parse_args()
     print(args)
     set_seed(seed=1234)
@@ -353,7 +366,7 @@ def main():
     # load model weights to continue training
     epoch = 0
     if args.resume:
-        checkpoints_dir = f'{args.results_dir}/checkpoints/{args.model_name}'
+        checkpoints_dir = f'{args.results_dir}rgb/checkpoints/{args.model_name}_512'
         checkpoint_filename = f"{args.model_name}_best_val_miou.pth"
         checkpoint_filepath = os.path.join(checkpoints_dir, checkpoint_filename)
         load_model(model, checkpoint_filepath)     
@@ -372,7 +385,7 @@ def main():
         batch_size=args.batch_size,
         num_workers=args.num_workers,
         save_oof=True,
-        gpu_number=0,
+        gpu_number=args.gpu,
     )
 
 
