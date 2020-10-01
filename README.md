@@ -66,15 +66,3 @@ tail -f nohup.out
 You may use the model pretrained on RGB + grayscale images; set the --checkpoint argument
 nohup python -m src.train_runner --model-name "unet_se_resnext101_32x4d" --encoder "se_resnext101_32x4d" --image-size 512 --checkpoint = '<pretrained_rgb_model>' --epochs 200 --lr 1e-3 --batch-size 6 --num-workers 4 & > nopup2.out 
 tail -f nohup.out
-
-## Run inference on the validation set
-python -m src.predict --action predict_val
-
-## Run inference on the test set
-python -m src.predict --action predict_test
-
-## Plot predictions for validation
-python -m src.predict --action plot_val_preds
-
-## Plot predictions for test
-python -m src.predict --action plot_test_preds
