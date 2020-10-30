@@ -38,7 +38,7 @@ tensor_transform = Compose([
 
 
 d4_geometric = A.Compose([                        
-			            A.ShiftScaleRotate(shift_limit=0.0625, scale_limit=0.2, rotate_limit=7, 
+			            A.ShiftScaleRotate(scale_limit=0.2, rotate_limit=0, 
                         interpolation=cv2.INTER_LINEAR, border_mode=cv2.BORDER_CONSTANT, value=0, mask_value=0, p=0.5),
                     	# D4 Group augmentations
                     	A.HorizontalFlip(p=0.5),
@@ -88,7 +88,8 @@ train_light = A.Compose([
                     
 
 train_medium = A.Compose([ 
-            A.ShiftScaleRotate(shift_limit=0., scale_limit=0.2, rotate_limit=5, p = 0.5),          
+            A.ShiftScaleRotate(shift_limit=0., scale_limit=0.2, rotate_limit=0, p = 0.5),          
+            A.RandomSizedCrop((int(0.5*IMG_SIZE), IMG_SIZE), IMG_SIZE, IMG_SIZE),
                             
             A.OneOf(
                 [

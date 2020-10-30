@@ -1,5 +1,5 @@
 """
-Generate model preditions for the test data
+Generate model preditions for the test data, spacenet 6
 """
 import argparse
 import collections

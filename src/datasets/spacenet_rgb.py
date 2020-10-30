@@ -16,8 +16,9 @@ from .. configs import IMG_SIZE, TRAIN_JSON, TRAIN_META, TRAIN_RGB, TRAIN_MASKS
 warnings.simplefilter("ignore")
 
 
-class RGBADataset(Dataset):
+class RGBDataset(Dataset):
     """
+
     SpaceNet 6 RGB Dataset
 
     Args:         
@@ -35,11 +36,11 @@ class RGBADataset(Dataset):
                 masks_dir: str,     
                 labels_df: pd.DataFrame,           
                 img_size: int = 512,                 
-                transforms: str ='valid', 
+                transforms: str ='train', 
                 normalise: bool = True,                        
                 debug: bool = False,               
                 ):
-        super(RGBADataset, self).__init__()  # inherit it from torch Dataset
+        super(RGBDataset, self).__init__()  # inherit it from torch Dataset
         self.images_dir = images_dir
         self.masks_dir = masks_dir       
         self.debug = debug
@@ -61,7 +62,8 @@ class RGBADataset(Dataset):
         # for preprocessed masks, 900x900 binary
         mask_path = os.path.join(self.masks_dir, 'SN6_Train_AOI_11_Rotterdam_Buildings_{}.npy'.format(sample_id))        
         try:
-            image = cv2.imread(image_path, cv2.IMREAD_UNCHANGED)               
+            image = cv2.imread(image_path, cv2.IMREAD_UNCHANGED)      
+            image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)         
             mask = np.load(mask_path)
             # pre-process, resize if needed
             image = cv2.resize(image, (self.img_size, self.img_size))
@@ -73,13 +75,7 @@ class RGBADataset(Dataset):
             image = np.zeros((self.img_size, self.img_size, 3), np.uint8)
             mask = np.zeros((self.img_size, self.img_size), np.uint8)    
             pass
-        # convert to grayscale for the 4th channel
-        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-        gray = np.expand_dims(gray, axis = 2)         
-        # create the image with alpha channel
-        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB) 
-        image = np.concatenate((image, gray), axis=2)      
-        
+       
         # augment
         if self.transforms is not None: 
             augmented = self.transforms(image=image, mask=mask)  
@@ -100,9 +96,9 @@ class RGBADataset(Dataset):
         target = torch.from_numpy(target)
  
         return image, target, sample_id
-         
+        
 
-def normalize(img: np.array, mean: list=[0.485, 0.456, 0.406, 0.450], std: list=[0.229, 0.224, 0.225, 0.225], max_value: int=255) -> np.array:
+def normalize(img: np.array, mean: list=[0.485, 0.456, 0.406], std: list=[0.229, 0.224, 0.225], max_value: int=255) -> np.array:
     """
     Noramalize image data to 0-1 range,
     then applymenaand std as in ImageNet pretrain, or any other
@@ -122,7 +118,7 @@ def normalize(img: np.array, mean: list=[0.485, 0.456, 0.406, 0.450], std: list=
 def test_dataset() -> None:
     """Helper to vizualise a sample from the data set"""
     df = pd.read_csv(TRAIN_META)
-    train_dataset = RGBADataset(
+    train_dataset = RGBDataset(
                 images_dir = TRAIN_RGB,                 
                 masks_dir = TRAIN_MASKS,
                 labels_df = df, 
@@ -140,19 +136,15 @@ def plot_img_target(image: torch.Tensor, target: torch.Tensor, sample_token: str
     image = image.numpy()
     print(image.shape)
     # transpose the input volume CXY to XYC order
-    image = image.transpose(1,2,0) 
-    gray = image[..., 3] # grayscale channel 4
-    image = image[..., :3] # RGB image
+    image = image.transpose(1,2,0)     
     image = np.rint(image).astype(np.uint8)
-    gray = gray.astype(np.uint8)
-    gray_as_rgb = cv2.cvtColor(gray, cv2.COLOR_GRAY2RGB)
-
+    
     target = target.numpy()
     target =np.rint(target*255).astype(np.uint8)               
     target_as_rgb = np.repeat(target[...,None], 3, 2) # repeat array for three channels
 
-    plt.figure(fig_num, figsize=(18,6))        
-    plt.imshow(np.hstack((image, gray_as_rgb, target_as_rgb))) 
+    plt.figure(fig_num, figsize=(12,6))        
+    plt.imshow(np.hstack((image, target_as_rgb))) 
     plt.title(sample_token)
     plt.show()
 
@@ -160,7 +152,7 @@ def plot_img_target(image: torch.Tensor, target: torch.Tensor, sample_token: str
 def test_dataset_augs(img_size: int=224, transforms: dict = TRANSFORMS["d4"]) -> None:
     """Helper to test data augmentations"""
     df = pd.read_csv(TRAIN_META)
-    train_dataset = RGBADataset(
+    train_dataset = RGBDataset(
                 images_dir = TRAIN_RGB,                 
                 masks_dir = TRAIN_MASKS,
                 labels_df = df, 
