@@ -1,5 +1,5 @@
 ON_SERVER = True
-TRAIN_DIR = "../../data/train/AOI_11_Rotterdam/"
+TRAIN_DIR = "../data/train/AOI_11_Rotterdam/"
 TRAIN_SAR = f"{TRAIN_DIR}SAR-Intensity/"
 TRAIN_RGB = f"{TRAIN_DIR}PS-RGB/"
 TRAIN_JSON = f"{TRAIN_DIR}geojson_buildings/"
