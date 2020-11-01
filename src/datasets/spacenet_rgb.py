@@ -49,7 +49,7 @@ class RGBDataset(Dataset):
         self.normalise = normalise        
         self.img_size = img_size
         self.transforms = transforms
-        self.ids = labels_df.ImageId.value      
+        self.ids = labels_df.ImageId.values      
         # select a subset for the debugging
         if self.debug:
             self.ids = self.ids[:160]
