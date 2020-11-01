@@ -4,6 +4,7 @@ import warnings
 
 import albumentations as A
 import cv2
+import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -14,7 +15,7 @@ from .transforms import TRANSFORMS
 from .. configs import IMG_SIZE, TRAIN_JSON, TRAIN_META, TRAIN_RGB, TRAIN_MASKS
 
 warnings.simplefilter("ignore")
-
+print(f'matplotlib.get_backend: {matplotlib.get_backend()}')
 
 class RGBDataset(Dataset):
     """
@@ -36,7 +37,7 @@ class RGBDataset(Dataset):
                 masks_dir: str,     
                 labels_df: pd.DataFrame,           
                 img_size: int = IMG_SIZE,                 
-                transforms: str ='train', 
+                transforms: A.Compose = TRANSFORMS["medium"], 
                 normalise: bool = True,                        
                 debug: bool = False,               
                 ):
@@ -47,7 +48,7 @@ class RGBDataset(Dataset):
         self.normalise = normalise        
         self.img_size = img_size
         self.transforms = transforms
-        self.ids = labels_df.ImageId.values        
+        self.ids = labels_df.ImageId.unique        
         # select a subset for the debugging
         if self.debug:
             self.ids = self.ids[:160]
@@ -117,7 +118,7 @@ def normalize(img: np.array, mean: list=[0.485, 0.456, 0.406], std: list=[0.229,
 
 def test_dataset() -> None:
     """Helper to vizualise a sample from the data set"""
-    df = pd.read_csv(TRAIN_META)
+    df = pd.read_csv(TRAIN_FOLDS)
     train_dataset = RGBDataset(
                 images_dir = TRAIN_RGB,                 
                 masks_dir = TRAIN_MASKS,
@@ -149,12 +150,13 @@ def plot_img_target(image: torch.Tensor, target: torch.Tensor, sample_token: str
     plt.figure(fig_num, figsize=(12,6))        
     plt.imshow(np.hstack((image, target_as_rgb))) 
     plt.title(sample_token)
+    plt.savefig(f'../output/{sample_token}.png')
     plt.show()
 
 
 def test_dataset_augs(img_size: int=224, transforms: dict = TRANSFORMS["d4"]) -> None:
     """Helper to test data augmentations"""
-    df = pd.read_csv(TRAIN_META)
+    df = pd.read_csv(TRAIN_FOLDS)
     train_dataset = RGBDataset(
                 images_dir = TRAIN_RGB,                 
                 masks_dir = TRAIN_MASKS,
