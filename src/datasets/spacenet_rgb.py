@@ -12,7 +12,7 @@ import torch
 from torch.utils.data import Dataset
 
 from .transforms import TRANSFORMS
-from .. configs import IMG_SIZE, TRAIN_JSON, TRAIN_META, TRAIN_RGB, TRAIN_MASKS
+from .. configs import IMG_SIZE, TRAIN_JSON, TRAIN_META, TRAIN_RGB, TRAIN_MASKS, TRAIN_FOLDS, FOLDS
 
 warnings.simplefilter("ignore")
 print(f'matplotlib.get_backend: {matplotlib.get_backend()}')
