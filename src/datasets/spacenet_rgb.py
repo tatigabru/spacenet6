@@ -15,7 +15,7 @@ from .transforms import TRANSFORMS
 from .. configs import IMG_SIZE, TRAIN_JSON, TRAIN_META, TRAIN_RGB, TRAIN_MASKS, TRAIN_FOLDS, FOLDS
 
 warnings.simplefilter("ignore")
-matplotlib.use('qt5agg')
+#matplotlib.use('qt5agg')
 print(f'matplotlib.get_backend: {matplotlib.get_backend()}')
 
 class RGBDataset(Dataset):
