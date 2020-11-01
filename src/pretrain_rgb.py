@@ -62,7 +62,7 @@ def train_runner(model: nn.Module, model_name: str, results_dir: str, experiment
         moiu = ckpt['valid_miou']
         loss = ckpt['valid_loss']
         start_epoch = ckpt['epoch']+1
-        print('Loaded model from {}, epoch {}'.format(checkpoint, epoch))
+        print('Loaded model from {}, epoch {}'.format(checkpoint, start_epoch))
     
     model.to(device)
 
@@ -84,7 +84,7 @@ def train_runner(model: nn.Module, model_name: str, results_dir: str, experiment
     df_val = df[df.fold == fold]
     print(len(df_train.ImageId.values), len(df_val.ImageId.values))
 
-    train_dataset = RGBADataset(
+    train_dataset = RGBDataset(
                 images_dir = TRAIN_RGB,                 
                 masks_dir = TRAIN_MASKS,
                 labels_df = df_train, 
@@ -93,7 +93,7 @@ def train_runner(model: nn.Module, model_name: str, results_dir: str, experiment
                 normalise = True,           
                 debug     = debug,  
     )    
-    valid_dataset = RGBADataset(
+    valid_dataset = RGBDataset(
                 images_dir = TRAIN_RGB,                 
                 masks_dir = TRAIN_MASKS,
                 labels_df = df_val, 

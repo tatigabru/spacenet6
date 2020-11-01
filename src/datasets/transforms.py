@@ -89,8 +89,8 @@ train_light = A.Compose([
 
 train_medium = A.Compose([ 
             A.ShiftScaleRotate(shift_limit=0., scale_limit=0.2, rotate_limit=0, p = 0.5),          
-            A.RandomSizedCrop((int(0.5*IMG_SIZE), IMG_SIZE), IMG_SIZE, IMG_SIZE),
-                            
+            A.RandomSizedCrop((int(0.2*IMG_SIZE), IMG_SIZE), IMG_SIZE, IMG_SIZE),
+
             A.OneOf(
                 [
                     A.RandomBrightnessContrast(p=0.7),
