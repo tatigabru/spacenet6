@@ -15,6 +15,7 @@ from .transforms import TRANSFORMS
 from .. configs import IMG_SIZE, TRAIN_JSON, TRAIN_META, TRAIN_RGB, TRAIN_MASKS, TRAIN_FOLDS, FOLDS
 
 warnings.simplefilter("ignore")
+matplotlib.use('qt5agg')
 print(f'matplotlib.get_backend: {matplotlib.get_backend()}')
 
 class RGBDataset(Dataset):
@@ -48,7 +49,7 @@ class RGBDataset(Dataset):
         self.normalise = normalise        
         self.img_size = img_size
         self.transforms = transforms
-        self.ids = labels_df.ImageId.unique        
+        self.ids = labels_df.ImageId.value      
         # select a subset for the debugging
         if self.debug:
             self.ids = self.ids[:160]
