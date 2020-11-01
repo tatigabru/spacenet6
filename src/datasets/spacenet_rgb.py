@@ -140,9 +140,10 @@ def plot_img_target(image: torch.Tensor, target: torch.Tensor, sample_token: str
     image = np.rint(image).astype(np.uint8)
     
     target = target.numpy()
+    target = np.squeeze(target)  
     print(target.shape)
     target =np.rint(target*255).astype(np.uint8)               
-    target_as_rgb = np.repeat(target[...,None], 3, 2) # repeat array for three channels
+    target_as_rgb = np.repeat(target[...,None], 3, 2) # repeat array 3 times for three channels
     print(target_as_rgb.shape)
 
     plt.figure(fig_num, figsize=(12,6))        
