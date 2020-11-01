@@ -6,6 +6,7 @@ import os
 import pickle
 
 import cv2
+import neptune
 import numpy as np
 import pandas as pd
 import torch
@@ -13,7 +14,7 @@ import torch.nn.functional as F
 import torch.utils.data
 from pytorch_toolbelt import losses as L
 from torch import nn
-from torch.optim import lr_scheduler, AdamW, Adam
+from torch.optim import Adam, AdamW, lr_scheduler
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
@@ -28,7 +29,15 @@ from .utils.get_models import get_unet
 from .utils.iou import binary_iou_numpy, binary_iou_pytorch
 from .utils.logger import Logger
 from .utils.radam import RAdam
-from .utils.utils import load_model, set_seed, load_optim
+from .utils.utils import load_model, load_optim, set_seed
+
+warnings.filterwarnings('ignore')
+
+
+print(torch.__version__)
+print(neptune.__version__)
+
+neptune.init('tati/spacenet')
 
 
 def train_runner(model: nn.Module, model_name: str, results_dir: str, experiment: str = '', debug: bool = False, img_size: int = IMG_SIZE,
@@ -69,13 +78,10 @@ def train_runner(model: nn.Module, model_name: str, results_dir: str, experiment
     # creates directories for checkpoints, tensorboard and predicitons
     checkpoints_dir = f'{results_dir}rgb/checkpoints/{model_name}{experiment}'
     predictions_dir = f'{results_dir}rgb/oof/{model_name}{experiment}'
-    tensorboard_dir = f'{results_dir}rgb/tensorboard/{model_name}{experiment}'
     validations_dir = f'{results_dir}rgb/oof_val/{model_name}{experiment}'
     os.makedirs(checkpoints_dir, exist_ok=True)
     os.makedirs(predictions_dir, exist_ok=True)
-    os.makedirs(tensorboard_dir, exist_ok=True)
     os.makedirs(validations_dir, exist_ok=True)
-    logger = Logger(tensorboard_dir)
     print('\n', model_name, '\n')
     
     # datasets for train and validation
@@ -151,8 +157,7 @@ def train_runner(model: nn.Module, model_name: str, results_dir: str, experiment
             for batch_num, (img, target, _) in enumerate(progress_bar):
                 img = img.to(device)
                 target = target.float().to(device)
-                prediction = model(img)                
-                
+                prediction = model(img)         
                 loss = criterion(prediction, target)
                 optimizer.zero_grad()            
                 loss.backward()
@@ -160,26 +165,24 @@ def train_runner(model: nn.Module, model_name: str, results_dir: str, experiment
                 optimizer.step()
                 epoch_losses.append(loss.detach().cpu().numpy())
 
-                if batch_num and batch_num % report_batch == 0:                
-                    logging.info(f'epoch: {epoch}; step: {batch_num}; loss: {np.mean(epoch_losses)} \n')
+                if batch_num and batch_num % report_batch == 0:    
+                    neptune.log_metric('Train loss', np.mean(epoch_losses))                        
                 
         # log loss history
         print("Epoch {}, Train Loss: {}".format(epoch, np.mean(epoch_losses)))
         train_losses.append(np.mean(epoch_losses))
-        logger.scalar_summary('loss_train', np.mean(epoch_losses), epoch)
-        logging.info(f'epoch: {epoch}; step: {batch_num}; loss: {np.mean(epoch_losses)} \n')
-
+        neptune.log_metric('Train loss', np.mean(epoch_losses))
+        
         # validate model
         val_loss = validate_loss(model, dataloader_valid, criterion1, epoch,
                                  validations_dir, device)
 
         valid_metrics = validate(model, dataloader_valid, criterion, epoch,
                                  validations_dir, save_oof, device)
-        # logging metrics       
-        logger.scalar_summary('loss_valid', valid_metrics['val_loss'], epoch)
-        logger.scalar_summary('miou_valid', valid_metrics['miou'], epoch)
+        # logging metrics  
+        neptune.log_metric('loss_valid', valid_metrics['val_loss'])
+        neptune.log_metric('miou_valid', valid_metrics['miou'])     
         valid_loss, val_metric = valid_metrics['val_loss'], valid_metrics['miou']
-        logging.info(f'epoch: {epoch}; val_bce: {val_loss}; val_loss: {valid_loss}; val_miou: {val_metric}\n')
         val_losses.append(valid_metrics['val_loss'])
         
         # get current learning rate
@@ -347,6 +350,17 @@ def main():
 
     os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"
     os.environ["CUDA_VISIBLE_DEVICES"]= str(args.gpu)
+
+    # log configs
+    experiment_name = f'{args.model_name}_fold{args.image_size}'
+    experiment_tag = 'v1'
+
+    # Create experiment with defined parameters
+    neptune.create_experiment (name=args.model_name,
+                            params=vars(args), # converts to dict
+                            tags=[experiment_name, experiment_tag],
+                            upload_source_files=['pretrain_rgb.py'])    
+
     # 1 channel, no activation (use sigmoid later)
     model = get_unet(encoder=args.encoder, in_channels = 4, num_classes = 1, activation = None) 
 
@@ -355,7 +369,7 @@ def main():
         checkpoints_dir = f'{args.results_dir}rgb/checkpoints/{args.model_name}'
         checkpoint_filename = f"{args.model_name}_best_val_miou.pth"        
         args.checkpoint = os.path.join(checkpoints_dir, checkpoint_filename)
-
+    
         
     train_runner(
         model=model,
