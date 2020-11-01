@@ -35,7 +35,7 @@ class RGBDataset(Dataset):
                 images_dir: str,                 
                 masks_dir: str,     
                 labels_df: pd.DataFrame,           
-                img_size: int = 512,                 
+                img_size: int = IMG_SIZE,                 
                 transforms: str ='train', 
                 normalise: bool = True,                        
                 debug: bool = False,               
@@ -65,9 +65,9 @@ class RGBDataset(Dataset):
             image = cv2.imread(image_path, cv2.IMREAD_UNCHANGED)      
             image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)         
             mask = np.load(mask_path)
-            # pre-process, resize if needed
-            image = cv2.resize(image, (self.img_size, self.img_size))
-            mask = cv2.resize(mask, (self.img_size, self.img_size), interpolation=cv2.INTER_NEAREST)
+            # resize if needed
+            #image = cv2.resize(image, (self.img_size, self.img_size))
+            #mask = cv2.resize(mask, (self.img_size, self.img_size), interpolation=cv2.INTER_NEAREST)
         except:
             print("Unexpected error:", sys.exc_info()[0])
             print(f'image.shape: {image.shape}')
@@ -140,8 +140,10 @@ def plot_img_target(image: torch.Tensor, target: torch.Tensor, sample_token: str
     image = np.rint(image).astype(np.uint8)
     
     target = target.numpy()
+    print(target.shape)
     target =np.rint(target*255).astype(np.uint8)               
     target_as_rgb = np.repeat(target[...,None], 3, 2) # repeat array for three channels
+    print(target_as_rgb.shape)
 
     plt.figure(fig_num, figsize=(12,6))        
     plt.imshow(np.hstack((image, target_as_rgb))) 
