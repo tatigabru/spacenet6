@@ -78,8 +78,7 @@ def train_runner(model: nn.Module, model_name: str, results_dir: str, experiment
     validations_dir = f'{results_dir}rgb/oof_val/{model_name}{experiment}'
     os.makedirs(checkpoints_dir, exist_ok=True)
     os.makedirs(predictions_dir, exist_ok=True)    
-    os.makedirs(validations_dir, exist_ok=True)
-    logger = Logger(tensorboard_dir)
+    os.makedirs(validations_dir, exist_ok=True)    
     print('\n', model_name, '\n')
     
     # datasets for train and validation
@@ -168,13 +167,12 @@ def train_runner(model: nn.Module, model_name: str, results_dir: str, experiment
 
                 if batch_num and batch_num % report_batch == 0:      
                     neptune.log_metric('Train loss', np.mean(epoch_losses))          
-                    #logging.info(f'epoch: {epoch}; step: {batch_num}; loss: {np.mean(epoch_losses)} \n')
+                    logging.info(f'epoch: {epoch}; step: {batch_num}; loss: {np.mean(epoch_losses)} \n')
                 
         # log loss history
         print("Epoch {}, Train Loss: {}".format(epoch, np.mean(epoch_losses)))
         train_losses.append(np.mean(epoch_losses))
-        neptune.log_metric('Train loss', np.mean(epoch_losses))
-        #logger.scalar_summary('loss_train', np.mean(epoch_losses), epoch)
+        neptune.log_metric('Train loss', np.mean(epoch_losses))        
         logging.info(f'epoch: {epoch}; step: {batch_num}; loss: {np.mean(epoch_losses)} \n')
 
         # validate model

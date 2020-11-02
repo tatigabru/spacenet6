@@ -135,7 +135,7 @@ def train_runner(model: nn.Module, model_name: str, results_dir: str, experiment
     criterion = BCEJaccardLoss(bce_weight=2, jaccard_weight=0.5, log_loss=False, log_sigmoid=True)
     #criterion = JaccardLoss(log_sigmoid=True, log_loss=False)
             
-    # logging
+    # basic logging
     report_batch = 200  
     report_epoch = 20  
     log_file = os.path.join(checkpoints_dir, f'fold_{fold}.log')
@@ -173,6 +173,7 @@ def train_runner(model: nn.Module, model_name: str, results_dir: str, experiment
         print("Epoch {}, Train Loss: {}".format(epoch, np.mean(epoch_losses)))
         train_losses.append(np.mean(epoch_losses))
         neptune.log_metric('Train loss', np.mean(epoch_losses))
+        logging.info(f'epoch: {epoch}; step: {batch_num}; loss: {np.mean(epoch_losses)} \n')
         
         # validate model
         val_loss = validate_loss(model, dataloader_valid, criterion1, epoch,
@@ -184,6 +185,7 @@ def train_runner(model: nn.Module, model_name: str, results_dir: str, experiment
         neptune.log_metric('loss_valid', valid_metrics['val_loss'])
         neptune.log_metric('miou_valid', valid_metrics['miou'])     
         valid_loss, val_metric = valid_metrics['val_loss'], valid_metrics['miou']
+        logging.info(f'epoch: {epoch}; val_bce: {val_loss}; val_loss: {valid_loss}; val_miou: {val_metric}\n')
         val_losses.append(valid_metrics['val_loss'])
         
         # get current learning rate
@@ -191,6 +193,7 @@ def train_runner(model: nn.Module, model_name: str, results_dir: str, experiment
             lr = param_group['lr']
         print(f'learning_rate: {lr}')    
         logging.info(f'learning_rate: {lr}\n')
+        neptune.log_metric('lr', lr) 
         scheduler.step(val_metric)
         
         # save the best metric
