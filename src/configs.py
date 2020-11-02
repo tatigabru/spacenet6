@@ -14,6 +14,6 @@ RESULTS_DIR = "../output/"
 LOSS = "cross_entropy"
 
 NUM_CLASSES = 1
-IMG_SIZE = 728
+IMG_SIZE = 512
 
 
