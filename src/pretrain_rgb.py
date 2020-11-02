@@ -86,7 +86,7 @@ def train_runner(model: nn.Module, model_name: str, results_dir: str, experiment
     print('\n', model_name, '\n')
     
     # datasets for train and validation
-    df = pd.read_csv(f'{TRAIN_DIR}folds.csv')
+    df = pd.read_csv(f'{TRAIN_DIR}Selim_folds.csv')
     df_train = df[df.fold != fold]
     df_val = df[df.fold == fold]
     print(f'Train images: {len(df_train.ImageId.values)}, valid images {len(df_val.ImageId.values)}')
@@ -356,8 +356,8 @@ def main():
     os.environ["CUDA_VISIBLE_DEVICES"]= str(args.gpu)
 
     # log configs
-    experiment_name = f'{args.model_name}_fold{args.image_size}'
-    experiment_tag = 'v1'
+    experiment_name = f'{args.model_name}_{args.image_size}'
+    experiment_tag = args.experiment
 
     # Create experiment with defined parameters
     neptune.create_experiment(name=args.model_name,
@@ -371,7 +371,7 @@ def main():
 
     # load model weights to continue training    
     if args.resume:
-        checkpoints_dir = f'{args.results_dir}rgb/checkpoints/{args.model_name}'
+        checkpoints_dir = f'{args.results_dir}rgb/checkpoints/{args.model_name}{args.experiment}'
         checkpoint_filename = f"{args.model_name}_best_val_miou.pth"        
         args.checkpoint = os.path.join(checkpoints_dir, checkpoint_filename)
     
