@@ -62,28 +62,31 @@ class RGBDataset(Dataset):
     def __getitem__(self, idx):
         sample_id = self.ids[idx]
         image_path = os.path.join(self.images_dir, "SN6_Train_AOI_11_Rotterdam_PS-RGB_{}.tif".format(sample_id))              
-        # for preprocessed masks, 900x900 binary
+        # preprocessed masks, 900x900 binary
         mask_path = os.path.join(self.masks_dir, 'SN6_Train_AOI_11_Rotterdam_Buildings_{}.npy'.format(sample_id))        
         try:
             image = cv2.imread(image_path, cv2.IMREAD_UNCHANGED)      
             image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)         
             mask = np.load(mask_path)
             # resize if needed
-            #image = cv2.resize(image, (self.img_size, self.img_size))
-            #mask = cv2.resize(mask, (self.img_size, self.img_size), interpolation=cv2.INTER_NEAREST)
+            image = cv2.resize(image, (self.img_size, self.img_size))
+            mask = cv2.resize(mask, (self.img_size, self.img_size), interpolation=cv2.INTER_NEAREST)
         except:
             print("Unexpected error:", sys.exc_info()[0])
             print(f'image.shape: {image.shape}')
             print(f'Missing Id: {sample_id}')
             image = np.zeros((self.img_size, self.img_size, 3), np.uint8)
             mask = np.zeros((self.img_size, self.img_size), np.uint8)    
-            pass
-       
+            pass       
         # augment
         if self.transforms is not None: 
             augmented = self.transforms(image=image, mask=mask)  
             image = augmented['image']
             mask = augmented['mask'] 
+        else:
+            # resize
+            image = cv2.resize(image, (self.img_size, self.img_size))
+            mask = cv2.resize(mask, (self.img_size, self.img_size), interpolation=cv2.INTER_NEAREST)
             
         # normalise
         if self.normalise:
@@ -92,9 +95,7 @@ class RGBDataset(Dataset):
         # post-processing
         image = image.transpose(2,0,1).astype(np.float32) # channels first
         target = mask.astype(np.uint8)  # single channel, int 
-        target = np.expand_dims(target, axis=0)
-        #print(target.shape)
-        
+        target = np.expand_dims(target, axis=0)   
         image = torch.from_numpy(image) 
         target = torch.from_numpy(target)
  

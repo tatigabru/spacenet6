@@ -271,9 +271,9 @@ def validate_loss(model: nn.Module, dataloader_valid: DataLoader, criterion: L, 
         progress_bar = tqdm(dataloader_valid, total=len(dataloader_valid))
         for img, target, _ in progress_bar:
             img = img.to(device)
-            print(img.shape)
+            #print(img.shape)
             target = target.float().to(device)     
-            print(target.shape) 
+            #print(target.shape) 
             output = model(img)          
             loss = criterion(output, target)
             val_losses.append(loss.detach().cpu().numpy())

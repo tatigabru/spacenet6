@@ -58,7 +58,7 @@ class RGBADataset(Dataset):
     def __getitem__(self, idx):
         sample_id = self.ids[idx]
         image_path = os.path.join(self.images_dir, "SN6_Train_AOI_11_Rotterdam_PS-RGB_{}.tif".format(sample_id))              
-        # for preprocessed masks, 900x900 binary
+        # preprocessed masks, 900x900 binary
         mask_path = os.path.join(self.masks_dir, 'SN6_Train_AOI_11_Rotterdam_Buildings_{}.npy'.format(sample_id))        
         try:
             image = cv2.imread(image_path, cv2.IMREAD_UNCHANGED)               
@@ -98,8 +98,6 @@ class RGBADataset(Dataset):
         image = image.transpose(2,0,1).astype(np.float32) # channels first
         target = mask.astype(np.uint8)  # single channel, int 
         target = np.expand_dims(target, axis=0)
-        #print(target.shape)
-        
         image = torch.from_numpy(image) 
         target = torch.from_numpy(target)
  
