@@ -62,7 +62,10 @@ class RGBADataset(Dataset):
         mask_path = os.path.join(self.masks_dir, 'SN6_Train_AOI_11_Rotterdam_Buildings_{}.npy'.format(sample_id))        
         try:
             image = cv2.imread(image_path, cv2.IMREAD_UNCHANGED)               
-            mask = np.load(mask_path)            
+            mask = np.load(mask_path)  
+            # resize if needed     
+            image = cv2.resize(image, (self.img_size, self.img_size))
+            mask = cv2.resize(mask, (self.img_size, self.img_size), interpolation=cv2.INTER_NEAREST)     
         except:
             print("Unexpected error:", sys.exc_info()[0])
             print(f'image.shape: {image.shape}')
