@@ -117,6 +117,9 @@ valid_ade = A.Compose([
         ])
 
 
+pad928 = A.Compose([
+        PadIfNeeded(min_height=928, min_width=928)
+        ])
 # from bloodaxe 
 # https://github.com/BloodAxe/Catalyst-Inria-Segmentation-Example/blob/master/inria/augmentations.py
 crop_transform = A.Compose([A.RandomSizedCrop((int(0.5*IMG_SIZE), IMG_SIZE), IMG_SIZE, IMG_SIZE),                
@@ -181,6 +184,7 @@ hard_augmentations = A.Compose([
 
 # dictionary of transforms
 TRANSFORMS = {
+    "pad" : pad928,
     "d4": d4_tansforms,
     "normalise": normalise,
     "resize_norm": resize_norm,

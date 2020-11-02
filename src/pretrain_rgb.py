@@ -132,7 +132,7 @@ def train_runner(model: nn.Module, model_name: str, results_dir: str, experiment
 
     # criteria
     criterion1 = nn.BCEWithLogitsLoss()                 
-    criterion = BCEJaccardLoss(bce_weight=2, jaccard_weight=0.5, log_loss=False, log_sigmoid=True)
+    criterion = BCEJaccardLoss(bce_weight=2, jaccard_weight=1, log_loss=False, log_sigmoid=True)
     #criterion = JaccardLoss(log_sigmoid=True, log_loss=False)
             
     # basic logging
@@ -162,7 +162,7 @@ def train_runner(model: nn.Module, model_name: str, results_dir: str, experiment
                 loss = criterion(prediction, target)
                 optimizer.zero_grad()            
                 loss.backward()
-                #torch.nn.utils.clip_grad_norm_(model.parameters(), 2)
+                torch.nn.utils.clip_grad_norm_(model.parameters(), 3)
                 optimizer.step()
                 epoch_losses.append(loss.detach().cpu().numpy())
 
