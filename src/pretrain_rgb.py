@@ -113,8 +113,7 @@ def train_runner(model: nn.Module, model_name: str, results_dir: str, experiment
     dataloader_train = DataLoader(train_dataset,
                                   num_workers=num_workers,
                                   batch_size=batch_size,
-                                  shuffle=True,
-                                  drop_last=True)                               
+                                  shuffle=True)                               
 
     dataloader_valid = DataLoader(valid_dataset,
                                   num_workers=num_workers,
@@ -358,10 +357,11 @@ def main():
     experiment_tag = 'v1'
 
     # Create experiment with defined parameters
-    neptune.create_experiment (name=args.model_name,
+    neptune.create_experiment(name=args.model_name,
                             params=vars(args), # converts to dict
-                            tags=[experiment_name, experiment_tag],
-                            upload_source_files=['pretrain_rgb.py'])    
+                            tags=[experiment_name, experiment_tag],                            
+                            upload_source_files=[os.path.basename(__file__)],
+                            )    
 
     # 1 channel, no activation (use sigmoid later)
     model = get_unet(encoder=args.encoder, in_channels = 3, num_classes = 1, activation = None) 
@@ -388,6 +388,9 @@ def main():
         save_oof=True,   
         gpu_number=1,              
     )
+
+    # stop logging    
+    neptune.stop()
 
 
 if __name__ == "__main__":
