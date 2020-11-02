@@ -118,7 +118,7 @@ valid_ade = A.Compose([
 
 
 pad928 = A.Compose([
-        PadIfNeeded(min_height=928, min_width=928)
+        A.PadIfNeeded(min_height=928, min_width=928)
         ])
 # from bloodaxe 
 # https://github.com/BloodAxe/Catalyst-Inria-Segmentation-Example/blob/master/inria/augmentations.py
