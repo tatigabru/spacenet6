@@ -19,7 +19,7 @@ from tqdm import tqdm
 
 from .configs import *
 # current project imports
-from .datasets.spacenet_rgb import RGBADataset
+from .datasets.spacenet_rgbg import RGBADataset
 from .datasets.transforms import TRANSFORMS
 from .losses.bce_jaccard import BCEJaccardLoss
 from .losses.dice import DiceLoss
