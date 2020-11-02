@@ -6,6 +6,7 @@ import os
 import pickle
 
 import cv2
+import neptune
 import numpy as np
 import pandas as pd
 import torch
@@ -13,7 +14,7 @@ import torch.nn.functional as F
 import torch.utils.data
 from pytorch_toolbelt import losses as L
 from torch import nn
-from torch.optim import lr_scheduler, AdamW, Adam
+from torch.optim import Adam, AdamW, lr_scheduler
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
@@ -28,7 +29,7 @@ from .utils.get_models import get_unet
 from .utils.iou import binary_iou_numpy, binary_iou_pytorch
 from .utils.logger import Logger
 from .utils.radam import RAdam
-from .utils.utils import load_model, set_seed, load_optim
+from .utils.utils import load_model, load_optim, set_seed
 
 print(torch.__version__)
 print(neptune.__version__)
