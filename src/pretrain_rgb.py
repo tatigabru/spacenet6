@@ -383,8 +383,8 @@ def main():
     neptune.create_experiment(name=args.model_name,
                             params=vars(args), # converts args to dict
                             tags=[experiment_name, experiment_tag],    
-                            upload_source_files=[pretrain_rgb.py, datasets.transforms.py],                        
-                            #upload_source_files=[os.path.basename(__file__)],
+                            #upload_source_files=['pretrain_rgb.py'],                        
+                            upload_source_files=[os.path.basename(__file__)],
                             )    
 
     # 1 channel, no activation (use sigmoid later)
