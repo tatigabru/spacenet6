@@ -22,7 +22,7 @@ from tqdm import tqdm
 from .configs import *
 # current project imports
 from .datasets.spacenet_rgb import RGBDataset
-from .predict_rgb import plot_preds
+#from .predict_rgb import plot_preds
 from .datasets.transforms import TRANSFORMS
 from .losses.bce_jaccard import BCEJaccardLoss
 from .losses.dice import DiceLoss

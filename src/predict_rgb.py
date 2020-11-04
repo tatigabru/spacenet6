@@ -136,7 +136,7 @@ def generate_test_preds(model: nn.Module, debug: bool, predictions_dir: str, che
     try:
         model = load_model(model, checkpoint)
     except FileNotFoundError:
-        break
+        print('Cannot load checkpoint')
 
     progress_bar = tqdm(dataloader_test, total=len(dataloader_test))  
     with torch.no_grad():        
