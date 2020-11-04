@@ -124,8 +124,8 @@ def train_runner(model: nn.Module, model_name: str, results_dir: str, experiment
     print('{} training images, {} validation images'.format(len(train_dataset), len(valid_dataset)))
 
     # optimizers and schedulers
-    #optimizer = AdamW(model.parameters(), lr=learning_rate)
-    optimizer = RAdam(model.parameters(), lr=learning_rate)    
+    optimizer = AdamW(model.parameters(), lr=learning_rate)
+    #optimizer = RAdam(model.parameters(), lr=learning_rate)    
     scheduler = lr_scheduler.ReduceLROnPlateau(optimizer, mode='max', patience=2, verbose=True, factor=0.2, min_lr=1e-6)
     # load optimizer state continue training    
     #if checkpoint != '':
@@ -344,7 +344,8 @@ def plot_oof(output: torch.Tensor, tile_ids: list, img: torch.Tensor, target: to
         plot_im = np.vstack([input_image, overlayed_im, prob_mask_rgb, target_rgb])
         cv2.imwrite(f"{predictions_dir}/{tile_name}.png", plot_im)   
         # send image (pass path to file)
-        neptune.send_image(f'oof_{tile_name}', f"{predictions_dir}/{tile_name}.png")
+        neptune.log_image(f'oof_{tile_name}', plot_im)
+        neptune.log_artifact(plot_im, destination='oof_img')
 
 
 
