@@ -126,7 +126,7 @@ def train_runner(model: nn.Module, model_name: str, results_dir: str, experiment
     # optimizers and schedulers
     #optimizer = AdamW(model.parameters(), lr=learning_rate)
     optimizer = RAdam(model.parameters(), lr=learning_rate)    
-    scheduler = lr_scheduler.ReduceLROnPlateau(optimizer, mode='max', patience=5, verbose=True, factor=0.2, min_lr=1e-6)
+    scheduler = lr_scheduler.ReduceLROnPlateau(optimizer, mode='max', patience=2, verbose=True, factor=0.2, min_lr=1e-6)
     # load optimizer state continue training    
     #if checkpoint != '':
     #    optimizer = load_optim(optimizer, checkpoint, device)          
@@ -193,7 +193,7 @@ def train_runner(model: nn.Module, model_name: str, results_dir: str, experiment
         print(f'learning_rate: {lr}')    
         logging.info(f'learning_rate: {lr}\n')
         neptune.log_metric('lr', lr) 
-        scheduler.step(val_metric)
+        scheduler.step(valid_metrics['miou'])
         
         # save the best metric
         if valid_metrics['miou'] > best_val_metric:
