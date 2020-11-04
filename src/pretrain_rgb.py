@@ -22,6 +22,7 @@ from tqdm import tqdm
 from .configs import *
 # current project imports
 from .datasets.spacenet_rgb import RGBDataset
+from .predict_rgb import plot_preds
 from .datasets.transforms import TRANSFORMS
 from .losses.bce_jaccard import BCEJaccardLoss
 from .losses.dice import DiceLoss
@@ -86,7 +87,7 @@ def train_runner(model: nn.Module, model_name: str, results_dir: str, experiment
     print('\n', model_name, '\n')
     
     # datasets for train and validation
-    df = pd.read_csv(f'{TRAIN_DIR}Selim_folds.csv')
+    df = pd.read_csv(f'{TRAIN_DIR}folds.csv')
     df_train = df[df.fold != fold]
     df_val = df[df.fold == fold]
     print(f'Train images: {len(df_train.ImageId.values)}, valid images {len(df_val.ImageId.values)}')
@@ -132,7 +133,7 @@ def train_runner(model: nn.Module, model_name: str, results_dir: str, experiment
 
     # criteria
     criterion1 = nn.BCEWithLogitsLoss()                 
-    criterion = BCEJaccardLoss(bce_weight=2, jaccard_weight=1, log_loss=False, log_sigmoid=True)
+    criterion = BCEJaccardLoss(bce_weight=2, jaccard_weight=0.5, log_loss=False, log_sigmoid=True)
     #criterion = JaccardLoss(log_sigmoid=True, log_loss=False)
             
     # basic logging
@@ -182,11 +183,9 @@ def train_runner(model: nn.Module, model_name: str, results_dir: str, experiment
         valid_metrics = validate(model, dataloader_valid, criterion, epoch,
                                  validations_dir, save_oof, device)
         # logging metrics  
+        neptune.log_metric('bce_loss_valid', val_loss)
         neptune.log_metric('loss_valid', valid_metrics['val_loss'])
         neptune.log_metric('miou_valid', valid_metrics['miou'])     
-        valid_loss, val_metric = valid_metrics['val_loss'], valid_metrics['miou']
-        logging.info(f'epoch: {epoch}; val_bce: {val_loss}; val_loss: {valid_loss}; val_miou: {val_metric}\n')
-        val_losses.append(valid_metrics['val_loss'])
         
         # get current learning rate
         for param_group in optimizer.param_groups:            
@@ -261,6 +260,7 @@ def validate_loss(model: nn.Module, dataloader_valid: DataLoader, criterion: L, 
         criterion       : loss criterion 
         epoch           : current epoch
         predictions_dir : directory for saving predictions
+        device          : torch.device
 
     Output:
         loss_valid: total validation loss, history 
@@ -292,6 +292,7 @@ def validate(model: nn.Module, dataloader_valid: DataLoader, criterion: L,
         epoch           : current epoch
         save_oof        : if true, calculate oof predictions and save them as png 
         predictions_dir : directory for saving predictions
+        device          : torch.device
 
     Output:
         metrics: dictionary with validation metrics 
@@ -299,28 +300,20 @@ def validate(model: nn.Module, dataloader_valid: DataLoader, criterion: L,
     with torch.no_grad():
         model.eval()      
         ious, val_losses = [], []        
-        progress_bar = tqdm(dataloader_valid, total=len(dataloader_valid))
-        
+        progress_bar = tqdm(dataloader_valid, total=len(dataloader_valid))        
         for batch_num, (img, target, tile_ids) in enumerate(progress_bar):  # iterate over batches
             img = img.to(device)
             target = target.float().to(device)
             output = model(img) 
+            # loss and metrics
             loss = criterion(output, target)
-            val_losses.append(loss.detach().cpu().numpy())         
-              
+            val_losses.append(loss.detach().cpu().numpy())       
             iou = binary_iou_pytorch(output, target, from_logits=True)            
             ious.append(iou.detach().cpu().numpy())
             # save predictions as pictures for the first batch
-            if save_oof and batch_num == 0:
-                output = torch.sigmoid(output)
-                output = output.cpu().numpy().copy()
-                for num, pred in enumerate(output, start=0):
-                    tile_name = tile_ids[num]                     
-                    if pred.ndim == 3:
-                        pred = np.squeeze(pred, axis=0)
-                    prob_mask = np.rint(pred*255).astype(np.uint8)                   
-                    prob_mask_rgb = np.repeat(prob_mask[...,None], 3, 2) # repeat array for three channels    
-                    cv2.imwrite(f"{predictions_dir}/{tile_name}.png", prob_mask_rgb)   
+            if save_oof and batch_num%100 == 0:
+                #plot_preds(img, output, target, predictions_dir, tile_ids[0], n_images = 2)   
+                plot_oof(output, tile_ids, img, target, predictions_dir)     
 
     # loss and metrics averaged over all batches
     print("Epoch {}, Valid Loss: {}, mIoU: {}".format(epoch, np.mean(val_losses), np.mean(ious)))    
@@ -329,12 +322,39 @@ def validate(model: nn.Module, dataloader_valid: DataLoader, criterion: L,
     return metrics
 
 
+def plot_oof(output: torch.Tensor, tile_ids: list, img: torch.Tensor, target: torch.Tensor, predictions_dir: str) -> None:
+    output = torch.sigmoid(output)
+    output = output.cpu().numpy().copy()
+    target = target.cpu().numpy().copy()
+    img = img.cpu().numpy().transpose(0,2,3,1)
+    for num, (pred, im, tar) in enumerate(zip(output, img, target), start=0):
+        tile_name = tile_ids[num]                     
+        if pred.ndim == 3:
+            pred = np.squeeze(pred, axis=0)
+        prob_mask = np.rint(pred*255).astype(np.uint8)                   
+        prob_mask_rgb = np.repeat(prob_mask[...,None], 3, 2) # repeat array for three channels  
+        # image        
+        input_image = np.rint(im*255).astype(np.uint8)
+        overlayed_im = np.rint(input_image*0.5 + prob_mask_rgb*0.5).clip(0,255).astype(np.uint8)      
+        # target
+        if tar.ndim == 3:
+            tar = np.squeeze(tar, axis=0)
+        tar = np.rint(tar*255).astype(np.uint8)
+        target_rgb = np.repeat(tar[..., None], 3, axis=2)
+        plot_im = np.vstack([input_image, overlayed_im, prob_mask_rgb, target_rgb])
+        cv2.imwrite(f"{predictions_dir}/{tile_name}.png", plot_im)   
+        # send image (pass path to file)
+        neptune.send_image(f'oof_{tile_name}', f"{predictions_dir}/{tile_name}.png")
+
+
+
 def main():
     parser = argparse.ArgumentParser()
     arg = parser.add_argument
     arg('--model-name', type=str, default='unet_resnet50', help='String model name used for saving')
     arg('--experiment', type=str, default='', help='String name for the experiment saving')
     arg('--encoder', type=str, default='resnet50', help='String model name used for saving')
+    arg('--fold', type=int, default=0, help='Validation fold, 0..4')
     arg('--results-dir', type=str, default=RESULTS_DIR, help='Directory for saving model')
     arg('--checkpoint', type=str, default='', help='Filepath ro checkpoint')
     arg('--data-dir', type=str, default=TRAIN_DIR, help='Directory for saving model')
@@ -342,7 +362,7 @@ def main():
     arg('--batch-size', type=int, default=4, help='Batch size during training')
     arg('--num-workers', type=int, default=2, help='Number of workers for dataloader. Default = 4.')
     arg('--epochs', type=int, default=3, help='Epoch to run')
-    arg('--lr', type=float, default=1e-3, help='Initial learning rate')
+    arg('--lr', type=float, default=1e-3, help='Initial learning rate')    
     arg('--resume', type=bool, default=False, help='If True resumes training from the checkpoint')
     arg('--debug', type=bool, default=False, help='If True runs in debug mode')
     arg('--val-oof', type=bool, default=False)
@@ -361,9 +381,10 @@ def main():
 
     # Create experiment with defined parameters
     neptune.create_experiment(name=args.model_name,
-                            params=vars(args), # converts to dict
-                            tags=[experiment_name, experiment_tag],                            
-                            upload_source_files=[os.path.basename(__file__)],
+                            params=vars(args), # converts args to dict
+                            tags=[experiment_name, experiment_tag],    
+                            upload_source_files=[pretrain_rgb.py, datasets.transforms.py],                        
+                            #upload_source_files=[os.path.basename(__file__)],
                             )    
 
     # 1 channel, no activation (use sigmoid later)
@@ -385,6 +406,7 @@ def main():
         debug=args.debug,
         img_size=args.image_size,
         learning_rate=args.lr,
+        fold = args.fold,
         epochs=args.epochs,
         batch_size=args.batch_size,
         num_workers=args.num_workers,        
